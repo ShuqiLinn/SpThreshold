@@ -1,0 +1,7 @@
+useDynLib(SpThreshold, .registration=TRUE)
+importFrom(Rcpp, evalCpp)
+
+export(SpThreshold)
+export(m_star)
+export(create_random_W)
+export(create_W_from_shapefile)

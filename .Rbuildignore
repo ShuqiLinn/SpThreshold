@@ -1,0 +1,6 @@
+^.*\.Rproj$
+^\.Rproj\.user$
+^test_.*\.R$
+^README\.md$
+^\.git$
+^\.gitignore$

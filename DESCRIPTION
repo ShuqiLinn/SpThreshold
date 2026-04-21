@@ -1,0 +1,21 @@
+Package: SpThreshold
+Type: Package
+Title: Replication Threshold for Bayesian Multilevel Models of Areal Data
+Version: 0.1.0
+Date: 2026-04-20
+Authors@R: c(
+    person("Shuqi", "Lin", email = "shuqi.lin@yale.edu",
+           role = c("aut", "cre"), comment = c(ORCID = "0009-0009-4016-0029")),
+    person("Joshua L.", "Warren", email = "joshua.warren@yale.edu",
+           role = "aut", comment = c(ORCID = "0000-0002-6274-6970")))
+Description: Fits Bayesian multilevel models for repeatedly measured areal
+    spatial data under the Leroux conditional autoregressive (CAR) prior and
+    its nonspatial counterpart, and computes a closed-form replication
+    threshold m* beyond which the two models yield effectively equivalent
+    posterior inference for regression coefficients. Posterior sampling is
+    implemented in C++ via RcppArmadillo for speed.
+License: GPL-3
+Imports: Rcpp (>= 1.0.13)
+LinkingTo: Rcpp, RcppArmadillo
+Suggests: spdep
+Encoding: UTF-8

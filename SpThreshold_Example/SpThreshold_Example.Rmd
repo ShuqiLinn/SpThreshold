@@ -1,0 +1,119 @@
+---
+output:
+  pdf_document: default
+---
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+# SpThreshold: Replication Threshold for Bayesian Multilevel Models of Areal Data
+
+## SpThreshold_Example
+
+[1] Initialize package and set reproducibility seed:
+```{r}
+library(SpThreshold)
+set.seed(2026)
+```
+
+[2] Generate a random connected adjacency matrix:
+```{r}
+n<-100  #Number of spatial units
+W<-create_random_W(n_locs = n)
+```
+
+[3] Set covariance parameters:
+
+* Within-area residual variance, spatial random-effect variance, spatial correlation:
+```{r}
+sigma2<-0.50
+tau2<-0.50
+rho<-0.70
+```
+
+[4] Compute $m^*$ under three covariate structures:
+
+* C1: covariate varies only within areas ($\text{Var}(\bar{\text{x}}_{i \cdot}) \approx 0$):
+```{r}
+m_obs<-20  #Observations per area
+N<-n*m_obs
+loc<-rep(1:n,
+         each = m_obs)
+X_c1<-rnorm(n = N)
+X_c1<-(X_c1 - mean(X_c1))/sqrt(mean((X_c1 - mean(X_c1))^2))  #Standardize
+res_c1<-m_star(W = W,
+               sigma2 = sigma2,
+               tau2 = tau2,
+               rho = rho,
+               X = X_c1,
+               loc = loc)
+res_c1$m_star
+```
+
+* C2: covariate varies both within and between areas:
+```{r}
+loc_means<-rnorm(n = n)
+X_c2<-rnorm(n = N,
+            mean = loc_means[loc],
+            sd = 1.00)
+X_c2<-(X_c2 - mean(X_c2))/sqrt(mean((X_c2 - mean(X_c2))^2))
+res_c2<-m_star(W = W,
+               sigma2 = sigma2,
+               tau2 = tau2,
+               rho = rho,
+               X = X_c2,
+               loc = loc)
+res_c2$m_star
+```
+
+* C3: covariate varies only between areas ($\text{Var}(\text{x}_{ij} \mid i) = 0$, denominator vanishes, bound is infinite):
+```{r}
+X_c3<-loc_means[loc]
+X_c3<-(X_c3 - mean(X_c3))/sqrt(mean((X_c3 - mean(X_c3))^2))
+res_c3<-m_star(W = W,
+               sigma2 = sigma2,
+               tau2 = tau2,
+               rho = rho,
+               X = X_c3,
+               loc = loc)
+res_c3$m_star
+```
+
+[5] Vary $\rho$ under C2:
+```{r}
+rho_seq<-c(0.05, 0.25, 0.50, 0.75, 0.95)
+m_star_rho<-sapply(rho_seq,
+                   function(r) m_star(W = W,
+                                      sigma2 = 0.50,
+                                      tau2 = 0.50,
+                                      rho = r,
+                                      X = X_c2,
+                                      loc = loc)$m_star)
+data.frame(rho = rho_seq,
+           m_star = m_star_rho)
+```
+
+[6] Vary $\kappa = \tau^2 / \sigma^2$ under C2:
+```{r}
+k_seq<-c(0.05/0.95, 0.50/0.50, 0.95/0.05)
+m_star_k<-sapply(k_seq,
+                 function(k){
+                    tau2_k<-k/(1.00 + k)
+                    sigma2_k<-1.00/(1.00 + k)
+                    m_star(W = W,
+                           sigma2 = sigma2_k,
+                           tau2 = tau2_k,
+                           rho = 0.70,
+                           X = X_c2,
+                           loc = loc)$m_star
+                    })
+data.frame(k = round(k_seq, 3),
+           m_star = m_star_k)
+```
+
+[7] Construct $W$ from a shapefile:
+```{r eval=FALSE}
+library(sf)
+nc<-st_read(system.file("shape/nc.shp",
+                        package = "sf"))
+W_nc<-create_W_from_shapefile(polygons = nc)
+```

@@ -1,0 +1,96 @@
+---
+output:
+  pdf_document: default
+---
+# SpThreshold: Replication Threshold for Bayesian Multilevel Models of Areal Data
+
+## Statistical Model
+$$Y_{ij} = \beta_0 + \beta_1 \text{x}_{ij} + \theta_i + \varepsilon_{ij},\ i=1,...,n;\ j=1,...,m;$$
+
+* $n$:  Number of spatial areas (e.g., counties, census tracts);
+
+* $m$:  Number of observations within each spatial area (balanced replication assumed);
+
+* $\text{x}_{ij}$:  Covariate value for observation $j$ in area $i$;
+
+* $\theta_i$:  Area-specific random effect;
+
+* $\varepsilon_{ij}$:  Observation-level residual error.
+
+$$\varepsilon_{ij} | \sigma^2 \stackrel{\text{iid}}{\sim} \text{N}\left(0, \sigma^2\right).$$
+
+$$\theta_i | \boldsymbol{\theta}_{-i}, \tau^2, \rho \stackrel{\text{ind}}{\sim} \text{N}\left(\frac{\rho \sum_{i'=1}^{n} \text{w}_{ii'}\theta_{i'}}{\rho \sum_{i'=1}^{n} \text{w}_{ii'} + 1 - \rho}, \frac{\tau^2}{\rho \sum_{i'=1}^{n} \text{w}_{ii'} + 1 - \rho}\right),\ i=1,...,n;$$
+
+* $\boldsymbol{\theta}_{-i}^{\text{T}} = \left(\theta_1, ..., \theta_{i-1}, \theta_{i+1}, ..., \theta_n\right)$;
+
+* $\text{w}_{ii'}$:  Equal to one if areas $i$ and $i'$ are neighbors, zero otherwise.  $\text{w}_{ii} = 0$ by definition;
+
+* Equivalent joint form: $\boldsymbol{\theta}|\tau^2,\rho \sim \text{N}\left(\boldsymbol{0}_n, \tau^2 Q(\rho)^{-1}\right)$ where $Q(\rho) = \rho\text{L} + \left(1-\rho\right)I_n$ and $\text{L} = \text{diag}(\text{w}_{1\cdot},...,\text{w}_{n\cdot}) - \text{W}$ is the graph Laplacian.
+
+## Prior Information
+$f\left(\beta_0\right), f\left(\beta_1\right) \propto 1;$
+
+$\sigma^2 \sim \text{Inverse Gamma}\left(a_{\sigma^2}, b_{\sigma^2}\right);$
+
+* Default setting: $a_{\sigma^2} = 0.01$, $b_{\sigma^2} = 0.01.$
+
+$\tau^2 \sim \text{Inverse Gamma}\left(a_{\tau^2}, b_{\tau^2}\right);$
+
+* Default setting: $a_{\tau^2} = 0.01$, $b_{\tau^2} = 0.01.$
+
+$\rho \sim \text{Uniform}\left(a_{\rho}, b_{\rho}\right);$
+
+* Default setting: $a_{\rho} = 0.00$, $b_{\rho} = 1.00.$
+
+## Default Initial Values
+* $\beta_0 = \beta_1 = 0$;
+
+* $\theta_i = 0$ for all $i$;
+
+* $\sigma^2 = 1.00$;
+
+* $\tau^2 = 1.00$;
+
+* $\rho = 0.50.$
+
+## Model Indicator
+* model_indicator $= 0$: Nonspatial:  
+  +  $\rho \equiv 0$, so $\theta_i|\tau^2 \stackrel{\text{iid}}{\sim} \text{N}\left(0, \tau^2\right);$
+
+* model_indicator $= 1$: Spatial:  
+  +  Full Leroux conditional autoregressive prior on $\boldsymbol{\theta}$.
+
+## MCMC Sampling
+Posterior sampling proceeds by iterating through the full conditional distributions of each parameter in the following order within each iteration:
+
+1. $\boldsymbol{\beta} = \left(\beta_0, \beta_1\right)^{\text{T}}$ (Gibbs);
+
+2. $\boldsymbol{\theta}$ (Gibbs);
+
+3. $\tau^2$ (Gibbs);
+
+4. $\sigma^2$ (Gibbs);
+
+5. $\rho$ (Metropolis step with a random-walk proposal on the logit scale, adaptive proposal standard deviation during burn-in targeting an acceptance rate of $0.234$).
+
+Derivations of the full conditional distributions are provided in the supplementary material of Lin and Warren (2026+).
+
+## Replication Threshold $m^*$
+The package function `m_star()` computes the closed-form replication threshold derived in Section 3 of Lin and Warren (2026+):
+
+$$m^* = \max\left\{2, \left\lceil \frac{\sigma^2 \rho \left|\sum_{i=1}^{n} d_i^2 \left(1 - \lambda_i\right)\right|}{\varepsilon \tau^2 \left(n - \sum_{i=1}^{n} d_i^2\right)} \right\rceil\right\};$$
+
+* $\lambda_1 < \lambda_2 \leq ... \leq \lambda_n$:  Eigenvalues of the graph Laplacian $\text{L}$, with corresponding orthonormal eigenvectors $\textbf{u}_1, ..., \textbf{u}_n$;
+
+* $d_i = \sum_{i'=1}^{n} \bar{\text{x}}_{i'\cdot} \text{u}_{ii'}$:  Projection of the area-level covariate means onto the $i$-th eigenvector of $\text{L}$;
+
+* $\bar{\text{x}}_{i\cdot} = m^{-1} \sum_{j=1}^{m} \text{x}_{ij}$:  Area-level sample mean of the covariate, with the full covariate vector centered and standardized to population mean zero and variance one;
+
+* $\varepsilon$:  Tolerance for the maximum acceptable relative difference in posterior variance between the spatial and nonspatial models.  Default setting: $\varepsilon = 0.05$.
+
+When $m > m^*$, the relative difference in the marginal posterior variance of $\beta_1$ between the spatial and nonspatial models falls below $\varepsilon$, and the two models yield effectively equivalent inference for $\beta_1$.
+
+The derivation of $m^*$ proceeds by: (i) marginalizing $\boldsymbol{\theta}$ from the model; (ii) applying the spectral decomposition of $\text{L}$ and the Woodbury matrix identity to obtain a reduced-form expression for the marginal posterior variance of $\beta_1$; and (iii) expanding the resulting expression in powers of $m$ to isolate the leading $O(m^{-1})$ term of the relative difference between the two models.  Full details are given in Section 3 of Lin and Warren (2026+).
+
+## Reference
+Lin, S. and Warren, J. L. (2026+).  On the Need for Spatial Random Effects in Bayesian Regression Models for Multilevel Areal Data.
