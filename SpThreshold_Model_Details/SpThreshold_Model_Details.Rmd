@@ -73,10 +73,10 @@ Posterior sampling proceeds by iterating through the full conditional distributi
 
 5. $\rho$ (Metropolis step with a random-walk proposal on the logit scale, adaptive proposal standard deviation during burn-in targeting an acceptance rate of $0.234$).
 
-Derivations of the full conditional distributions are provided in the supplementary material of Lin and Warren (2026+).
+Derivations of the full conditional distributions are provided in the supplementary material of the manuscript.
 
 ## Replication Threshold $m^*$
-The package function `m_star()` computes the closed-form replication threshold derived in Section 3 of Lin and Warren (2026+):
+The package function `m_star()` computes the closed-form replication threshold derived in Section 3 of the manuscript:
 
 $$m^* = \max\left\{2, \left\lceil \frac{\sigma^2 \rho \left|\sum_{i=1}^{n} d_i^2 \left(1 - \lambda_i\right)\right|}{\varepsilon \tau^2 \left(n - \sum_{i=1}^{n} d_i^2\right)} \right\rceil\right\};$$
 
@@ -90,7 +90,7 @@ $$m^* = \max\left\{2, \left\lceil \frac{\sigma^2 \rho \left|\sum_{i=1}^{n} d_i^2
 
 When $m > m^*$, the relative difference in the marginal posterior variance of $\beta_1$ between the spatial and nonspatial models falls below $\varepsilon$, and the two models yield effectively equivalent inference for $\beta_1$.
 
-The derivation of $m^*$ proceeds by: (i) marginalizing $\boldsymbol{\theta}$ from the model; (ii) applying the spectral decomposition of $\text{L}$ and the Woodbury matrix identity to obtain a reduced-form expression for the marginal posterior variance of $\beta_1$; and (iii) expanding the resulting expression in powers of $m$ to isolate the leading $O(m^{-1})$ term of the relative difference between the two models.  Full details are given in Section 3 of Lin and Warren (2026+).
+The derivation of $m^*$ proceeds by: (i) marginalizing $\boldsymbol{\theta}$ from the model; (ii) applying the spectral decomposition of $\text{L}$ and the Woodbury matrix identity to obtain a reduced-form expression for the marginal posterior variance of $\beta_1$; and (iii) expanding the resulting expression in powers of $m$ to isolate the leading $O(m^{-1})$ term of the relative difference between the two models.  Full details are given in Section 3 of the manuscript.
 
 ## Reference
 Lin, S. and Warren, J. L. (2026+).  On the Need for Spatial Random Effects in Bayesian Regression Models for Multilevel Areal Data.
