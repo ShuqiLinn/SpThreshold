@@ -78,7 +78,7 @@ Derivations of the full conditional distributions are provided in the supplement
 ## Replication Threshold $m^*$
 The package function `m_star()` computes the closed-form replication threshold derived in Section 3 of the manuscript:
 
-$$m^* = \max\left\{2, \left\lceil \frac{\sigma^2 \rho \left|\sum_{i=1}^{n} d_i^2 \left(1 - \lambda_i\right)\right|}{\varepsilon \tau^2 \left(n - \sum_{i=1}^{n} d_i^2\right)} \right\rceil\right\};$$
+$$m^* = \max\left\{2, \left\lceil \frac{\sigma^2 \rho \left|\sum_{i=1}^{n} d_i^2 \left(1 - \lambda_i\right)\right|}{\gamma \tau^2 \left(n - \sum_{i=1}^{n} d_i^2\right)} \right\rceil\right\};$$
 
 * $\lambda_1 < \lambda_2 \leq ... \leq \lambda_n$:  Eigenvalues of the graph Laplacian $\text{L}$, with corresponding orthonormal eigenvectors $\textbf{u}_1, ..., \textbf{u}_n$;
 
@@ -86,9 +86,9 @@ $$m^* = \max\left\{2, \left\lceil \frac{\sigma^2 \rho \left|\sum_{i=1}^{n} d_i^2
 
 * $\bar{\text{x}}_{i\cdot} = m^{-1} \sum_{j=1}^{m} \text{x}_{ij}$:  Area-level sample mean of the covariate, with the full covariate vector centered and standardized to population mean zero and variance one;
 
-* $\varepsilon$:  Tolerance for the maximum acceptable relative difference in posterior variance between the spatial and nonspatial models.  Default setting: $\varepsilon = 0.05$.
+* $\gamma$:  Tolerance for the maximum acceptable relative difference in posterior variance between the spatial and nonspatial models.  Default setting: $\gamma = 0.05$.
 
-When $m > m^*$, the relative difference in the marginal posterior variance of $\beta_1$ between the spatial and nonspatial models falls below $\varepsilon$, and the two models yield effectively equivalent inference for $\beta_1$.
+When $m > m^*$, the relative difference in the marginal posterior variance of $\beta_1$ between the spatial and nonspatial models falls below $\gamma$, and the two models yield effectively equivalent inference for $\beta_1$.
 
 The derivation of $m^*$ proceeds by: (i) marginalizing $\boldsymbol{\theta}$ from the model; (ii) applying the spectral decomposition of $\text{L}$ and the Woodbury matrix identity to obtain a reduced-form expression for the marginal posterior variance of $\beta_1$; and (iii) expanding the resulting expression in powers of $m$ to isolate the leading $O(m^{-1})$ term of the relative difference between the two models.  Full details are given in Section 3 of the manuscript.
 
