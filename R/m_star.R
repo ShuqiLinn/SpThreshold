@@ -17,13 +17,13 @@
 #'   Used together with \code{loc} to compute \code{xbar} internally.
 #' @param loc Optional integer vector (length \eqn{N}) identifying the spatial
 #'   unit for each observation in \code{X}.
-#' @param epsilon Tolerance for the maximum acceptable relative difference in
+#' @param gamma Tolerance for the maximum acceptable relative difference in
 #'   posterior variance. Default is \code{0.05}.
 #'
 #' @return A list with components
 #'   \describe{
 #'     \item{\code{m_star}}{Integer replication threshold.}
-#'     \item{\code{epsilon}}{Tolerance used in the computation.}
+#'     \item{\code{gamma}}{Tolerance used in the computation.}
 #'     \item{\code{numerator_raw}}{Signed value of
 #'       \eqn{\sum_i d_i^2 (1 - \lambda_i)} before taking the absolute value;
 #'       useful for diagnosing the sign of the untransformed bound.}
@@ -34,7 +34,7 @@
 #'   }
 #'
 #' @details The function implements
-#' \deqn{m^* = \max\left\{2, \left\lceil \frac{\sigma^2 \rho \left|\sum_{i=1}^{n} d_i^2 (1 - \lambda_i)\right|}{\varepsilon \tau^2 \left(n - \sum_{i=1}^{n} d_i^2\right)} \right\rceil \right\},}
+#' \deqn{m^* = \max\left\{2, \left\lceil \frac{\sigma^2 \rho \left|\sum_{i=1}^{n} d_i^2 (1 - \lambda_i)\right|}{\gamma \tau^2 \left(n - \sum_{i=1}^{n} d_i^2\right)} \right\rceil \right\},}
 #' where \eqn{\lambda_i} are the eigenvalues of the graph Laplacian of
 #' \code{W} and \eqn{d_i = \sum_{j} \bar{x}_{j \cdot} u_{ij}} is the projection
 #' of the location-level covariate means onto the \eqn{i}th eigenvector. The
@@ -67,7 +67,7 @@ m_star <- function(W, sigma2, tau2, rho,
                    xbar = NULL,
                    X = NULL,
                    loc = NULL,
-                   epsilon = 0.05) {
+                   gamma = 0.05) {
 
    ## -- Input dispatch ------------------------------------------------------
    n <- nrow(W)
@@ -110,8 +110,8 @@ m_star <- function(W, sigma2, tau2, rho,
    if (rho < 0 || rho >= 1) {
       stop("rho must lie in [0, 1).")
    }
-   if (epsilon <= 0) {
-      stop("epsilon must be positive.")
+   if (gamma <= 0 ) {
+      stop("gamma must be positive")
    }
 
    ## -- Eigendecomposition of the graph Laplacian ---------------------------
@@ -139,17 +139,17 @@ m_star <- function(W, sigma2, tau2, rho,
    ## on the denominator is used to catch this case robustly.
    if (abs(den) < sqrt(.Machine$double.eps) * n) {
       return(list(m_star        = Inf,
-                  epsilon       = epsilon,
+                  gamma       = gamma,
                   numerator_raw = num_signed,
                   d_sq          = d_sq,
                   eigenvalues   = lambda))
    }
 
-   m_raw <- (sigma2 * rho * abs(num_signed)) / (epsilon * tau2 * den)
+   m_raw <- (sigma2 * rho * abs(num_signed)) / (gamma * tau2 * den)
    m_out <- max(2, ceiling(m_raw))
 
    list(m_star        = m_out,
-        epsilon       = epsilon,
+        gamma       = gamma,
         numerator_raw = num_signed,
         d_sq          = d_sq,
         eigenvalues   = lambda)
