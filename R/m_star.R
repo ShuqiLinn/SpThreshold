@@ -102,6 +102,23 @@ m_star <- function(W, sigma2, tau2, rho,
       stop(sprintf("length(xbar) = %d does not match nrow(W) = %d.",
                    length(xbar), n))
    }
+   
+   ## -- Check xbar consistency with the standardization assumption ----------
+   ## Under population standardization of x_ij (mean 0, variance 1 across all
+   ## nm observations), sum(xbar^2) <= n and mean(xbar) is near 0. Violations
+   ## indicate that xbar was not derived from a properly standardized
+   ## covariate, in which case the bound's derivation does not apply.
+   if (sum(xbar^2) > n + sqrt(.Machine$double.eps) * n) {
+      warning("sum(xbar^2) exceeds n, which is inconsistent with xbar being ",
+              "the location-level mean of a covariate standardized to ",
+              "population mean 0 and variance 1. The bound assumes this ",
+              "standardization; results may be misleading.")
+   }
+   if (abs(mean(xbar)) > 1e-6) {
+      warning("xbar does not appear to be centered (mean is not approximately ",
+              "0). The bound assumes xbar derives from a covariate standardized ",
+              "to population mean 0; results may be misleading.")
+   }
 
    ## -- Validate variance and correlation arguments -------------------------
    if (sigma2 <= 0 || tau2 <= 0) {
