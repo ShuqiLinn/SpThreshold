@@ -121,3 +121,19 @@ polygons <- st_read(shp_path, quiet = TRUE)
 
 W_nc <- create_W_from_shapefile(polygons = polygons)
 ```
+
+[8] Vary the tolerance $\gamma$ under C2:
+```{r}
+gamma_seq<-c(0.01, 0.05, 0.10, 0.20)
+m_star_gamma<-sapply(gamma_seq,
+                     function(g) m_star(W = W,
+                                        sigma2 = 0.50,
+                                        tau2 = 0.50,
+                                        rho = 0.70,
+                                        X = X_c2,
+                                        loc = loc,
+                                        gamma = g)$m_star)
+data.frame(gamma = gamma_seq,
+           m_star = m_star_gamma)
+```
+
