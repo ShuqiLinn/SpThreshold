@@ -111,9 +111,13 @@ data.frame(k = round(k_seq, 3),
 ```
 
 [7] Construct $W$ from a shapefile:
-```{r eval=FALSE}
+
+```{r}
 library(sf)
-nc<-st_read(system.file("shape/nc.shp",
-                        package = "sf"))
-W_nc<-create_W_from_shapefile(polygons = nc)
+
+# please replace with the path to your own shapefile; here we use the example shapefile bundled with sf
+shp_path <- system.file("shape/nc.shp", package = "sf")
+polygons <- st_read(shp_path, quiet = TRUE)
+
+W_nc <- create_W_from_shapefile(polygons = polygons)
 ```
