@@ -5,7 +5,7 @@
 Computes the asymptotic replication threshold \eqn{m^*} beyond which a nonspatial model yields effectively equivalent posterior inference for a regression coefficient compared to a Leroux CAR spatial model, based on the closed-form bound derived in the manuscript.
 }
 \usage{
-m_star(W, sigma2, tau2, rho, xbar = NULL, X = NULL, loc = NULL, epsilon = 0.05)
+m_star(W, sigma2, tau2, rho, xbar = NULL, X = NULL, loc = NULL, gamma = 0.05)
 }
 \arguments{
 \item{W}{Adjacency matrix, an \eqn{n} by \eqn{n} symmetric matrix of 0/1 entries, where \eqn{w_{ii'} = 1} indicates that areas \eqn{i} and \eqn{i'} are neighbors. Must correspond to a connected graph.}
@@ -22,19 +22,19 @@ m_star(W, sigma2, tau2, rho, xbar = NULL, X = NULL, loc = NULL, epsilon = 0.05)
 
 \item{loc}{Optional integer vector of length \eqn{N} identifying the spatial unit for each observation in \code{X}.}
 
-\item{epsilon}{Tolerance for the maximum acceptable relative difference in posterior variance. Default is \code{0.05}.}
+\item{gamma}{Tolerance for the maximum acceptable relative difference in posterior variance. Default is \code{0.05}.}
 }
 \value{
 A list with components
 \item{\code{m_star}}{Integer replication threshold.}
-\item{\code{epsilon}}{Tolerance used in the computation.}
+\item{\code{gamma}}{Tolerance used in the computation.}
 \item{\code{numerator_raw}}{Signed value of \eqn{\sum_i d_i^2 (1 - \lambda_i)} before taking the absolute value.}
 \item{\code{d_sq}}{Length-\eqn{n} vector of squared projections \eqn{d_i^2}.}
 \item{\code{eigenvalues}}{Eigenvalues of the graph Laplacian, sorted in ascending order.}
 }
 \details{
 The function implements
-\deqn{m^* = \max\left\{2, \left\lceil \frac{\sigma^2 \rho \left|\sum_{i=1}^{n} d_i^2 (1 - \lambda_i)\right|}{\varepsilon \tau^2 \left(n - \sum_{i=1}^{n} d_i^2\right)} \right\rceil \right\},}
+\deqn{m^* = \max\left\{2, \left\lceil \frac{\sigma^2 \rho \left|\sum_{i=1}^{n} d_i^2 (1 - \lambda_i)\right|}{\gamma \tau^2 \left(n - \sum_{i=1}^{n} d_i^2\right)} \right\rceil \right\},}
 where \eqn{\lambda_i} are the eigenvalues of the graph Laplacian of \code{W} and \eqn{d_i = \sum_{j} \bar{x}_{j \cdot} u_{ij}} is the projection of the area-level covariate means onto the \eqn{i}th eigenvector.
 
 When \code{X} and \code{loc} are supplied instead of \code{xbar}, the covariate is expected to be pre-standardized to population mean zero and variance one. A warning is issued otherwise.
