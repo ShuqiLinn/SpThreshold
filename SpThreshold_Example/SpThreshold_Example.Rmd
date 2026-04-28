@@ -7,7 +7,7 @@ knitr::opts_chunk$set(echo = TRUE)
 ```
 # SpThreshold: Replication Threshold for Bayesian Multilevel Models of Areal Data
 
-## SpThreshold_Example
+## Part I: Replication threshold via m_star()
 
 [1] Initialize package and set reproducibility seed:
 ```{r}
@@ -136,4 +136,126 @@ m_star_gamma<-sapply(gamma_seq,
 data.frame(gamma = gamma_seq,
            m_star = m_star_gamma)
 ```
+
+
+## Part II: Model fitting via spfit()
+
+`spfit()` fits the multilevel model from the manuscript via MCMC, with either a Leroux CAR prior (`model_indicator = 1`) or an iid prior (`model_indicator = 0`) on the area-level random effects. The C++ implementation has been verified to target the same posterior as the R reference to within Monte Carlo error.
+
+[1] Generate a small synthetic dataset:
+```{r}
+set.seed(2026)
+n_locs<-25
+m_per<-30
+N<-n_locs*m_per
+
+W_small<-as.matrix(create_random_W(n_locs))
+loc_small<-rep(1:n_locs, each = m_per)
+
+beta_true<-c(0.50, 1.50)
+sigma2_true<-0.50
+tau2_true<-0.50
+rho_true<-0.70
+
+D<-diag(rowSums(W_small))
+Q_true<-rho_true*(D - W_small) + (1.00 - rho_true)*diag(n_locs)
+theta_true<-as.numeric(t(chol(solve(Q_true)*tau2_true)) %*% rnorm(n_locs))
+theta_true<-theta_true - mean(theta_true)
+
+x_small<-rnorm(N)
+X_small<-cbind(1, x_small)
+y_small<-as.numeric(X_small %*% beta_true + theta_true[loc_small]) +
+         rnorm(N, 0, sqrt(sigma2_true))
+```
+
+[2] Fit the spatial model:
+```{r}
+fit_sp<-spfit(y = y_small,
+              X = X_small,
+              loc = loc_small,
+              W = W_small,
+              model_indicator = 1,
+              mcmc_samples = 15000,
+              burnin = 5000)
+```
+
+[3] Discard burn-in and summarize the posterior:
+```{r}
+keep<-5001:15000
+data.frame(parameter = c("beta0", "beta1", "sigma2", "tau2", "rho"),
+           truth = c(beta_true, sigma2_true, tau2_true, rho_true),
+           posterior_mean = c(mean(fit_sp$beta[1, keep]),
+                              mean(fit_sp$beta[2, keep]),
+                              mean(fit_sp$sigma2[keep]),
+                              mean(fit_sp$tau2[keep]),
+                              mean(fit_sp$rho[keep])),
+           posterior_sd = c(sd(fit_sp$beta[1, keep]),
+                            sd(fit_sp$beta[2, keep]),
+                            sd(fit_sp$sigma2[keep]),
+                            sd(fit_sp$tau2[keep]),
+                            sd(fit_sp$rho[keep])))
+```
+
+[4] Fit the nonspatial model on the same data:
+```{r}
+fit_ns<-spfit(y = y_small,
+              X = X_small,
+              loc = loc_small,
+              W = W_small,
+              model_indicator = 0,
+              mcmc_samples = 15000,
+              burnin = 5000)
+```
+
+[5] Compare $\beta_1$ inference between the two models:
+```{r}
+data.frame(model = c("spatial", "nonspatial"),
+           posterior_mean = c(mean(fit_sp$beta[2, keep]),
+                              mean(fit_ns$beta[2, keep])),
+           posterior_sd = c(sd(fit_sp$beta[2, keep]),
+                            sd(fit_ns$beta[2, keep])),
+           q025 = c(quantile(fit_sp$beta[2, keep], 0.025, names = FALSE),
+                    quantile(fit_ns$beta[2, keep], 0.025, names = FALSE)),
+           q975 = c(quantile(fit_sp$beta[2, keep], 0.975, names = FALSE),
+                    quantile(fit_ns$beta[2, keep], 0.975, names = FALSE)))
+```
+
+[6] Connect the two parts: compute $m^*$ and check whether the available replication exceeds it. When $m \geq m^*$, the spatial and nonspatial posteriors for $\beta_1$ should be effectively equivalent.
+```{r}
+xbar_small<-as.numeric(tapply(x_small, loc_small, mean))
+res<-m_star(W = W_small,
+            sigma2 = sigma2_true,
+            tau2 = tau2_true,
+            rho = rho_true,
+            xbar = xbar_small)
+data.frame(m_star = res$m_star,
+           m_actual = m_per,
+           sufficient = m_per >= res$m_star)
+```
+
+[7] The data frame interface is also supported and produces identical output. Below uses the same data via a data frame:
+```{r}
+df_small<-data.frame(y = y_small, x = x_small, area = loc_small)
+
+set.seed(7)
+fit_df<-spfit(data = df_small,
+              formula = y ~ x,
+              area = "area",
+              W = W_small,
+              model_indicator = 1,
+              mcmc_samples = 15000,
+              burnin = 5000)
+
+set.seed(7)
+fit_vec<-spfit(y = y_small,
+               X = X_small,
+               loc = loc_small,
+               W = W_small,
+               model_indicator = 1,
+               mcmc_samples = 15000,
+               burnin = 5000)
+
+identical(fit_df$beta, fit_vec$beta)
+```
+
 
