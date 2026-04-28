@@ -115,7 +115,8 @@ data.frame(k = round(k_seq, 3),
 ```{r}
 library(sf)
 
-# please replace with the path to your own shapefile; here we use the example shapefile bundled with sf
+# please replace with the path to your own shapefile; 
+# here we use the example shapefile bundled with sf
 shp_path <- system.file("shape/nc.shp", package = "sf")
 polygons <- st_read(shp_path, quiet = TRUE)
 
@@ -142,11 +143,11 @@ data.frame(gamma = gamma_seq,
 
 `spfit()` fits the multilevel model from the manuscript via MCMC, with either a Leroux CAR prior (`model_indicator = 1`) or an iid prior (`model_indicator = 0`) on the area-level random effects. The C++ implementation has been verified to target the same posterior as the R reference to within Monte Carlo error.
 
-[1] Generate a small synthetic dataset:
+[1] Generate a small synthetic dataset. We use a C2-style covariate (within- and between-area variation) here for better illustration.
 ```{r}
 set.seed(2026)
-n_locs<-25
-m_per<-30
+n_locs<-50
+m_per<-10
 N<-n_locs*m_per
 
 W_small<-as.matrix(create_random_W(n_locs))
@@ -155,14 +156,16 @@ loc_small<-rep(1:n_locs, each = m_per)
 beta_true<-c(0.50, 1.50)
 sigma2_true<-0.50
 tau2_true<-0.50
-rho_true<-0.70
+rho_true<-0.50
 
 D<-diag(rowSums(W_small))
 Q_true<-rho_true*(D - W_small) + (1.00 - rho_true)*diag(n_locs)
 theta_true<-as.numeric(t(chol(solve(Q_true)*tau2_true)) %*% rnorm(n_locs))
 theta_true<-theta_true - mean(theta_true)
 
-x_small<-rnorm(N)
+loc_means_x<-rnorm(n_locs)
+x_small<-rnorm(N, mean = loc_means_x[loc_small], sd = 1.00)
+x_small<-(x_small - mean(x_small))/sqrt(mean((x_small - mean(x_small))^2))
 X_small<-cbind(1, x_small)
 y_small<-as.numeric(X_small %*% beta_true + theta_true[loc_small]) +
          rnorm(N, 0, sqrt(sigma2_true))
@@ -207,7 +210,7 @@ fit_ns<-spfit(y = y_small,
               burnin = 5000)
 ```
 
-[5] Compare $\beta_1$ inference between the two models:
+[5a] Compare $\beta_1$ inference between the two models:
 ```{r}
 data.frame(model = c("spatial", "nonspatial"),
            posterior_mean = c(mean(fit_sp$beta[2, keep]),
@@ -220,14 +223,28 @@ data.frame(model = c("spatial", "nonspatial"),
                     quantile(fit_ns$beta[2, keep], 0.975, names = FALSE)))
 ```
 
-[6] Connect the two parts: compute $m^*$ and check whether the available replication exceeds it. When $m \geq m^*$, the spatial and nonspatial posteriors for $\beta_1$ should be effectively equivalent.
+[5b] Sanity check: by definition, $m^*$ is the smallest $m$ where the relative difference in posterior variance of $\beta_1$ falls below the tolerance $\gamma$. Compute that relative difference here and confirm it's below $\gamma = 0.05$:
+```{r}
+var_sp<-var(fit_sp$beta[2, keep])
+var_ns<-var(fit_ns$beta[2, keep])
+rel_diff<-abs(var_sp - var_ns)/var_ns
+
+data.frame(var_sp = var_sp,
+           var_ns = var_ns,
+           rel_diff = rel_diff,
+           gamma = 0.05,
+           within_threshold = rel_diff < 0.05)
+```
+
+[6] Connect the two parts: compute $m^*$ for this C2 covariate and check whether the available replication exceeds it. When $m \geq m^*$, the spatial and nonspatial posteriors for $\beta_1$ should be effectively equivalent.
 ```{r}
 xbar_small<-as.numeric(tapply(x_small, loc_small, mean))
 res<-m_star(W = W_small,
             sigma2 = sigma2_true,
             tau2 = tau2_true,
             rho = rho_true,
-            xbar = xbar_small)
+            X = x_small,
+            loc = loc_small)
 data.frame(m_star = res$m_star,
            m_actual = m_per,
            sufficient = m_per >= res$m_star)
