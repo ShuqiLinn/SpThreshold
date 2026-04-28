@@ -243,17 +243,14 @@ spfit <- function(data = NULL,
       }
 
    ## -- Validate W ----------------------------------------------------------
-   if(!is.numeric(W)){
-      stop("W must be a numeric matrix.")
-      }
-   ## Coerce sparse Matrix to dense for the C++ engine, but warn loudly only
-   ## if the matrix isn't square or symmetric
+   ## Coerce sparse Matrix to dense first, before any other checks (sparse
+   ## Matrix objects don't satisfy is.numeric() in the base R sense)
    if(inherits(W, "Matrix")){
       W <- as.matrix(W)
-      }
-   if(!is.matrix(W)){
-      stop("W must be a matrix.")
-      }
+   }
+   if(!is.matrix(W) || !is.numeric(W)){
+      stop("W must be a numeric matrix.")
+   }
    if(nrow(W) != ncol(W)){
       stop("W must be square.")
       }

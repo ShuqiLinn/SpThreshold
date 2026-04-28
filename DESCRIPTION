@@ -19,3 +19,4 @@ Imports: Rcpp (>= 1.0.13)
 LinkingTo: Rcpp, RcppArmadillo
 Suggests: spdep
 Encoding: UTF-8
+RoxygenNote: 7.3.2
