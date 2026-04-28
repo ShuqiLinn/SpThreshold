@@ -210,20 +210,7 @@ fit_ns<-spfit(y = y_small,
               burnin = 5000)
 ```
 
-[5a] Compare $\beta_1$ inference between the two models:
-```{r}
-data.frame(model = c("spatial", "nonspatial"),
-           posterior_mean = c(mean(fit_sp$beta[2, keep]),
-                              mean(fit_ns$beta[2, keep])),
-           posterior_sd = c(sd(fit_sp$beta[2, keep]),
-                            sd(fit_ns$beta[2, keep])),
-           q025 = c(quantile(fit_sp$beta[2, keep], 0.025, names = FALSE),
-                    quantile(fit_ns$beta[2, keep], 0.025, names = FALSE)),
-           q975 = c(quantile(fit_sp$beta[2, keep], 0.975, names = FALSE),
-                    quantile(fit_ns$beta[2, keep], 0.975, names = FALSE)))
-```
-
-[5b] Sanity check: by definition, $m^*$ is the smallest $m$ where the relative difference in posterior variance of $\beta_1$ falls below the tolerance $\gamma$. Compute that relative difference here and confirm it's below $\gamma = 0.05$:
+[5] Compare the two models. The manuscript bounds the relative difference in posterior variance of $\beta_1$: when $m \geq m^*$, this relative difference is below $\gamma$. Compute the relative difference here and confirm:
 ```{r}
 var_sp<-var(fit_sp$beta[2, keep])
 var_ns<-var(fit_ns$beta[2, keep])
@@ -236,7 +223,7 @@ data.frame(var_sp = var_sp,
            within_threshold = rel_diff < 0.05)
 ```
 
-[6] Connect the two parts: compute $m^*$ for this C2 covariate and check whether the available replication exceeds it. When $m \geq m^*$, the spatial and nonspatial posteriors for $\beta_1$ should be effectively equivalent.
+[6] Connect the two parts: compute $m^*$ from the formula in Section 3.2 of the manuscript. By construction, when $m \geq m^*$, the relative difference in posterior variance of $\beta_1$ is below $\gamma$ — which is what we just verified empirically in step [5].
 ```{r}
 xbar_small<-as.numeric(tapply(x_small, loc_small, mean))
 res<-m_star(W = W_small,
