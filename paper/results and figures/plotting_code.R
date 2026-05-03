@@ -168,9 +168,9 @@ for(n_val in c(25, 100, 400)){
              fill     = guide_legend(order = 1),
              linetype = guide_legend(order = 2)) +
       labs(x = "Sample Size per Location (m)",
-           y = expression(frac(group("|", sigma[beta[1]]^2*(rho) -
-                                          sigma[beta[1]]^2*(0), "|"),
-                               sigma[beta[1]]^2*(0))))
+           y = expression(frac(group("|", Var(beta[1]*"|"*bold(Y)*","*rho) -
+                                        Var(beta[1]*"|"*bold(Y)*","*0), "|"),
+                               Var(beta[1]*"|"*bold(Y)*","*0))))
 
    print(p1)
 
@@ -240,7 +240,8 @@ for(n_val in c(25, 100, 400)){
          panel.grid.major = element_line(color = "grey92", linewidth = 0.3),
          panel.grid.minor = element_blank()) +
       labs(x = "Sample Size per Location (m)",
-           y = expression(group("|", mu[beta[1]]*(rho) - mu[beta[1]]*(0), "|")))
+           y = expression(group("|", E(beta[1]*"|"*bold(Y)*","*rho) -
+                                   E(beta[1]*"|"*bold(Y)*","*0),"|")))
 
    print(p2)
 
