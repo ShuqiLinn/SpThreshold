@@ -118,8 +118,12 @@ in C++, with adaptive Metropolis tuning for \eqn{\rho} during burn-in.
 Two input interfaces are supported and are mutually exclusive:
 \itemize{
    \item \strong{Data frame interface:} pass \code{data}, \code{formula}, and
-     \code{area}.
+     \code{area}. An intercept is included automatically via the formula
+     (e.g., \code{y ~ x} fits an intercept and a slope on \code{x}). To
+     fit without an intercept, write \code{y ~ x + 0} or \code{y ~ x - 1}.
    \item \strong{Vector interface:} pass \code{y}, \code{X}, and \code{loc}.
+     The intercept is \emph{not} added automatically; include a column of
+     1s in \code{X} (e.g., \code{cbind(1, x)}) if an intercept is desired.
 }
 Mixing the two interfaces is an error.
 
