@@ -9,6 +9,10 @@ beta_update <- function(N, p, y, X, loc, theta_old, sigma2_old) {
     .Call(`_SpThreshold_beta_update`, N, p, y, X, loc, theta_old, sigma2_old)
 }
 
+sp_glmm_pg_cpp <- function(y, X, loc, W, model_indicator, mcmc_samples, burnin, adapt_rho, pg_shape, kappa, offset_pg, beta_mean, beta_precision, beta, theta, tau2, rho, proposal_sd, a_tau, b_tau, a_rho, b_rho, center) {
+    .Call(`_SpThreshold_sp_glmm_pg_cpp`, y, X, loc, W, model_indicator, mcmc_samples, burnin, adapt_rho, pg_shape, kappa, offset_pg, beta_mean, beta_precision, beta, theta, tau2, rho, proposal_sd, a_tau, b_tau, a_rho, b_rho, center)
+}
+
 rho_update <- function(n, W, theta, tau2, rho_old, Q_old, Q_log_det_old, proposal_sd, a_rho, b_rho) {
     .Call(`_SpThreshold_rho_update`, n, W, theta, tau2, rho_old, Q_old, Q_log_det_old, proposal_sd, a_rho, b_rho)
 }

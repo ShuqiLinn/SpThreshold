@@ -29,7 +29,7 @@
 #' @param family One of \code{"gaussian"}, \code{"bernoulli"},
 #'   \code{"binomial"}, or \code{"negative_binomial"}; \code{"negbin"} is an alias.
 #' @param trials Binomial trial counts; scalar or one per observation.
-#' @param nb_size Fixed positive negative-binomial size. Required for that
+#' @param nb_size Fixed positive integer negative-binomial size. Required for that
 #'   family; dispersion is not estimated. See \code{\link{spfit_glmm}}.
 #' @param offset Known linear-predictor offset, scalar or one per observation.
 #' @param beta_prior_mean,beta_prior_sd Regression prior for count/binary
@@ -38,9 +38,8 @@
 #' @param center Sum-to-zero constraint for the count/binary families, using
 #'   a constrained Gaussian draw. The Gaussian sampler keeps its existing
 #'   centering convention; \code{center=FALSE} is not supported for Gaussian.
-#' @param pg_method \code{"devroye"} uses exact integer-shape Polya--Gamma
-#'   sampling. \code{"hybrid"} permits noninteger NB sizes using BayesLogit's
-#'   hybrid algorithm, which can use numerical approximations.
+#' @param pg_method The only supported value is \code{"devroye"}, using
+#'   \pkg{pgdraw} for integer-shape Polya--Gamma draws.
 #' @param verbose Print Gaussian sampling progress.
 #' @return A \code{spfit} list containing draws of beta (parameters by states),
 #'   theta (locations by states), tau2 and, for spatial models, rho. Gaussian
@@ -72,7 +71,7 @@ spfit <- function(data=NULL, formula=NULL, area=NULL, y=NULL, X=NULL, loc=NULL,
                   tau2_init=NULL, rho_init=NULL, proposal_sd_init=NULL,
                   family="gaussian", trials=1, nb_size=NULL, offset=0,
                   beta_prior_mean=0, beta_prior_sd=10, center=TRUE,
-                  pg_method=c("devroye","hybrid"), verbose=FALSE) {
+                  pg_method="devroye", verbose=FALSE) {
   cl <- match.call()
   if (identical(family,"negbin")) family <- "negative_binomial"
   family <- match.arg(family,c("gaussian","bernoulli","binomial","negative_binomial"))
@@ -98,7 +97,7 @@ spfit <- function(data=NULL, formula=NULL, area=NULL, y=NULL, X=NULL, loc=NULL,
       mcmc_samples=mcmc_samples,family=family,trials=trials,nb_size=nb_size,
       offset=offset,burnin=burnin,adapt_rho=adapt_rho,
       beta_prior_mean=beta_prior_mean,beta_prior_sd=beta_prior_sd,center=center,
-      pg_method=match.arg(pg_method),
+      pg_method=match.arg(pg_method,"devroye"),
       a_tau2_prior=a_tau2_prior,b_tau2_prior=b_tau2_prior,
       a_rho_prior=a_rho_prior,b_rho_prior=b_rho_prior,
       beta_init=beta_init,theta_init=theta_init,tau2_init=tau2_init,

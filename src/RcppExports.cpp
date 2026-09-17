@@ -59,6 +59,39 @@ BEGIN_RCPP
     return rcpp_result_gen;
 END_RCPP
 }
+// sp_glmm_pg_cpp
+Rcpp::List sp_glmm_pg_cpp(arma::vec y, arma::mat X, arma::uvec loc, arma::mat W, int model_indicator, int mcmc_samples, int burnin, bool adapt_rho, arma::vec pg_shape, arma::vec kappa, arma::vec offset_pg, arma::vec beta_mean, arma::vec beta_precision, arma::vec beta, arma::vec theta, double tau2, double rho, double proposal_sd, double a_tau, double b_tau, double a_rho, double b_rho, bool center);
+RcppExport SEXP _SpThreshold_sp_glmm_pg_cpp(SEXP ySEXP, SEXP XSEXP, SEXP locSEXP, SEXP WSEXP, SEXP model_indicatorSEXP, SEXP mcmc_samplesSEXP, SEXP burninSEXP, SEXP adapt_rhoSEXP, SEXP pg_shapeSEXP, SEXP kappaSEXP, SEXP offset_pgSEXP, SEXP beta_meanSEXP, SEXP beta_precisionSEXP, SEXP betaSEXP, SEXP thetaSEXP, SEXP tau2SEXP, SEXP rhoSEXP, SEXP proposal_sdSEXP, SEXP a_tauSEXP, SEXP b_tauSEXP, SEXP a_rhoSEXP, SEXP b_rhoSEXP, SEXP centerSEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< arma::vec >::type y(ySEXP);
+    Rcpp::traits::input_parameter< arma::mat >::type X(XSEXP);
+    Rcpp::traits::input_parameter< arma::uvec >::type loc(locSEXP);
+    Rcpp::traits::input_parameter< arma::mat >::type W(WSEXP);
+    Rcpp::traits::input_parameter< int >::type model_indicator(model_indicatorSEXP);
+    Rcpp::traits::input_parameter< int >::type mcmc_samples(mcmc_samplesSEXP);
+    Rcpp::traits::input_parameter< int >::type burnin(burninSEXP);
+    Rcpp::traits::input_parameter< bool >::type adapt_rho(adapt_rhoSEXP);
+    Rcpp::traits::input_parameter< arma::vec >::type pg_shape(pg_shapeSEXP);
+    Rcpp::traits::input_parameter< arma::vec >::type kappa(kappaSEXP);
+    Rcpp::traits::input_parameter< arma::vec >::type offset_pg(offset_pgSEXP);
+    Rcpp::traits::input_parameter< arma::vec >::type beta_mean(beta_meanSEXP);
+    Rcpp::traits::input_parameter< arma::vec >::type beta_precision(beta_precisionSEXP);
+    Rcpp::traits::input_parameter< arma::vec >::type beta(betaSEXP);
+    Rcpp::traits::input_parameter< arma::vec >::type theta(thetaSEXP);
+    Rcpp::traits::input_parameter< double >::type tau2(tau2SEXP);
+    Rcpp::traits::input_parameter< double >::type rho(rhoSEXP);
+    Rcpp::traits::input_parameter< double >::type proposal_sd(proposal_sdSEXP);
+    Rcpp::traits::input_parameter< double >::type a_tau(a_tauSEXP);
+    Rcpp::traits::input_parameter< double >::type b_tau(b_tauSEXP);
+    Rcpp::traits::input_parameter< double >::type a_rho(a_rhoSEXP);
+    Rcpp::traits::input_parameter< double >::type b_rho(b_rhoSEXP);
+    Rcpp::traits::input_parameter< bool >::type center(centerSEXP);
+    rcpp_result_gen = Rcpp::wrap(sp_glmm_pg_cpp(y, X, loc, W, model_indicator, mcmc_samples, burnin, adapt_rho, pg_shape, kappa, offset_pg, beta_mean, beta_precision, beta, theta, tau2, rho, proposal_sd, a_tau, b_tau, a_rho, b_rho, center));
+    return rcpp_result_gen;
+END_RCPP
+}
 // rho_update
 Rcpp::List rho_update(int n, arma::mat W, arma::vec theta, double tau2, double rho_old, arma::mat Q_old, double Q_log_det_old, double proposal_sd, double a_rho, double b_rho);
 RcppExport SEXP _SpThreshold_rho_update(SEXP nSEXP, SEXP WSEXP, SEXP thetaSEXP, SEXP tau2SEXP, SEXP rho_oldSEXP, SEXP Q_oldSEXP, SEXP Q_log_det_oldSEXP, SEXP proposal_sdSEXP, SEXP a_rhoSEXP, SEXP b_rhoSEXP) {
@@ -136,6 +169,7 @@ END_RCPP
 static const R_CallMethodDef CallEntries[] = {
     {"_SpThreshold_SpThreshold", (DL_FUNC) &_SpThreshold_SpThreshold, 21},
     {"_SpThreshold_beta_update", (DL_FUNC) &_SpThreshold_beta_update, 7},
+    {"_SpThreshold_sp_glmm_pg_cpp", (DL_FUNC) &_SpThreshold_sp_glmm_pg_cpp, 23},
     {"_SpThreshold_rho_update", (DL_FUNC) &_SpThreshold_rho_update, 10},
     {"_SpThreshold_sigma2_update", (DL_FUNC) &_SpThreshold_sigma2_update, 8},
     {"_SpThreshold_tau2_update", (DL_FUNC) &_SpThreshold_tau2_update, 5},

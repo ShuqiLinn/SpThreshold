@@ -15,7 +15,7 @@ Description: Fits Bayesian multilevel models for repeatedly measured areal
     posterior inference for regression coefficients. Posterior sampling is
     implemented in C++ via RcppArmadillo for speed.
 License: GPL-3
-Imports: Rcpp (>= 1.0.13)
+Imports: Rcpp (>= 1.0.13), pgdraw (>= 1.1)
 LinkingTo: Rcpp, RcppArmadillo
 Suggests: spdep
 Encoding: UTF-8

@@ -35,7 +35,7 @@ spfit(
   beta_prior_mean = 0,
   beta_prior_sd = 10,
   center = TRUE,
-  pg_method = c("devroye", "hybrid"),
+  pg_method = "devroye",
   verbose = FALSE
 )
 }
@@ -79,7 +79,7 @@ NULL uses zero coefficients/random effects, unit variances, and rho=0.5.}
 
 \item{trials}{Binomial trial counts; scalar or one per observation.}
 
-\item{nb_size}{Fixed positive negative-binomial size. Required for that
+\item{nb_size}{Fixed positive integer negative-binomial size. Required for that
 family; dispersion is not estimated. See \code{\link{spfit_glmm}}.}
 
 \item{offset}{Known linear-predictor offset, scalar or one per observation.}
@@ -92,9 +92,8 @@ SD requests a flat prior. Gaussian fits use the existing flat prior.}
 a constrained Gaussian draw. The Gaussian sampler keeps its existing
 centering convention; \code{center=FALSE} is not supported for Gaussian.}
 
-\item{pg_method}{\code{"devroye"} uses exact integer-shape Polya--Gamma
-sampling. \code{"hybrid"} permits noninteger NB sizes using BayesLogit's
-hybrid algorithm, which can use numerical approximations.}
+\item{pg_method}{\code{"devroye"}, the only supported value, uses the
+\pkg{pgdraw} package for exact integer-shape Polya--Gamma sampling.}
 
 \item{verbose}{Print Gaussian sampling progress.}
 }
