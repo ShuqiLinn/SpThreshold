@@ -55,10 +55,12 @@ spfit_glmm <- function(y, X, loc, W, model_indicator, mcmc_samples,
         stop("The spatial model requires a connected graph.", call. = FALSE)
     scalar(mcmc_samples, "mcmc_samples", positive = TRUE, integer = TRUE)
     scalar(burnin, "burnin", integer = TRUE)
-    if (mcmc_samples > .Machine$integer.max)
-        stop("mcmc_samples exceeds the supported integer range.", call. = FALSE)
-    if (burnin < 0 || burnin >= mcmc_samples)
-        stop("burnin must be between 0 and mcmc_samples - 1.", call. = FALSE)
+    if (mcmc_samples < 2 || mcmc_samples > .Machine$integer.max)
+       stop("mcmc_samples must be between 2 and .Machine$integer.max.",
+            call. = FALSE)
+    if (burnin < 0 || burnin >= mcmc_samples - 1L)
+       stop("burnin must be nonnegative and leave at least one sampling update.",
+            call. = FALSE)
     if (!is.logical(adapt_rho) || length(adapt_rho) != 1L || is.na(adapt_rho))
         stop("adapt_rho must be TRUE or FALSE.", call. = FALSE)
     if (!is.logical(center) || length(center) != 1L || is.na(center))
@@ -115,6 +117,7 @@ spfit_glmm <- function(y, X, loc, W, model_indicator, mcmc_samples,
                           as.numeric(theta_init), tau2_init, rho_init, proposal_sd_init,
                           a_tau2_prior, b_tau2_prior, a_rho_prior, b_rho_prior,
                           center)
+    if (model_indicator == 0L) fit$rho <- NULL
     rownames(fit$beta) <- colnames(X)
     fit$call <- cl
     fit$model_indicator <- as.integer(model_indicator)
