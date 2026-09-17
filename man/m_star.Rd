@@ -1,55 +1,48 @@
 \name{m_star}
 \alias{m_star}
-\title{Replication Threshold for Spatial vs Nonspatial Inference on a Regression Coefficient}
-\description{
-Computes the asymptotic replication threshold \eqn{m^*} beyond which a nonspatial model yields effectively equivalent posterior inference for a regression coefficient compared to a Leroux CAR spatial model, based on the closed-form bound derived in the manuscript.
-}
+\title{Leading-Order and Exact Integer Replication Thresholds}
 \usage{
-m_star(W, sigma2, tau2, rho, xbar = NULL, X = NULL, loc = NULL, gamma = 0.05)
+m_star(W, sigma2, tau2 = NULL, rho, xbar = NULL, X = NULL,
+  loc = NULL, gamma = 0.05, tau0_2 = NULL, tau1_2 = NULL,
+  method = c("approx", "exact"), within_ss = NULL,
+  calibration = c("full", "common"), max_search = 1e6)
 }
 \arguments{
-\item{W}{Adjacency matrix, an \eqn{n} by \eqn{n} symmetric matrix of 0/1 entries, where \eqn{w_{ii'} = 1} indicates that areas \eqn{i} and \eqn{i'} are neighbors. Must correspond to a connected graph.}
-
-\item{sigma2}{Within-area residual variance.}
-
-\item{tau2}{Spatial random-effect variance.}
-
-\item{rho}{Spatial correlation parameter in \eqn{[0, 1)}.}
-
-\item{xbar}{Optional length-\eqn{n} vector of area-level covariate means. If supplied, \code{X} and \code{loc} are ignored.}
-
-\item{X}{Optional covariate vector of length \eqn{N = nm}. Used together with \code{loc} to compute \code{xbar} internally.}
-
-\item{loc}{Optional integer vector of length \eqn{N} identifying the spatial unit for each observation in \code{X}.}
-
-\item{gamma}{Tolerance for the maximum acceptable relative difference in posterior variance. Default is \code{0.05}.}
+\item{W}{Symmetric nonnegative adjacency matrix with zero diagonal.}
+\item{sigma2}{Positive common residual variance.}
+\item{tau2}{Deprecated spatial-scale alias. Prefer named \code{tau0_2} or \code{tau1_2}. The third positional argument retains its old spatial-scale meaning.}
+\item{rho}{Leroux parameter in \eqn{[0,1)}.}
+\item{xbar,X,loc,within_ss}{Covariate template inputs; see \code{\link{variance_curve}}. Balanced replication is required for the \code{X}, \code{loc} interface.}
+\item{gamma}{Positive relative variance tolerance. A value equal to the tolerance is acceptable.}
+\item{tau0_2,tau1_2,calibration}{Variance scales and conversion; see \code{\link{variance_calibration}}.}
+\item{method}{\code{"approx"} returns the leading-order rule; \code{"exact"} seeks the smallest integer at least 2 after which the exact conditional curve stays within tolerance at every integer replication.}
+\item{max_search}{Maximum integer replication evaluated in the exact search. If the rigorous tail bound lies beyond this limit, the exact result is unresolved, not a guessed threshold.}
 }
-\value{
-A list with components
-\item{\code{m_star}}{Integer replication threshold.}
-\item{\code{gamma}}{Tolerance used in the computation.}
-\item{\code{numerator_raw}}{Signed value of \eqn{\sum_i d_i^2 (1 - \lambda_i)} before taking the absolute value.}
-\item{\code{d_sq}}{Length-\eqn{n} vector of squared projections \eqn{d_i^2}.}
-\item{\code{eigenvalues}}{Eigenvalues of the graph Laplacian, sorted in ascending order.}
-}
+\description{Computes replication guidance for fixed Gaussian covariance parameters and a balanced covariate template using separately specified or calibrated spatial and iid variances.}
 \details{
-The function implements
-\deqn{m^* = \max\left\{2, \left\lceil \frac{\sigma^2 \rho \left|\sum_{i=1}^{n} d_i^2 (1 - \lambda_i)\right|}{\gamma \tau^2 \left(n - \sum_{i=1}^{n} d_i^2\right)} \right\rceil \right\},}
-where \eqn{\lambda_i} are the eigenvalues of the graph Laplacian of \code{W} and \eqn{d_i = \sum_{j} \bar{x}_{j \cdot} u_{ij}} is the projection of the area-level covariate means onto the \eqn{i}th eigenvector.
+The curve and target are defined in \code{\link{variance_curve}}. Let
+\eqn{D_i=(U^T\bar{x})_i^2}, \eqn{c_i=1-\rho+\rho\lambda_i}, and
+\eqn{s=W_{\mathrm{within}}/m>0}. The approximate threshold is
+\deqn{m_{\mathrm{approx}}=\max\left\{2,\left\lceil
+\frac{\sigma^2|\sum_iD_i(1/\tau_0^2-c_i/\tau_1^2)|}{\gamma s}
+\right\rceil\right\}.}
+With full-field calibration this becomes the whiteboard expression with
+\eqn{(\sigma^2/\tau_0^2)\sum_iD_i(1-gc_i)} in the signed numerator.
+It is a leading-order approximation, not a finite-sample guarantee.
 
-When \code{X} and \code{loc} are supplied instead of \code{xbar}, the covariate is expected to be pre-standardized to population mean zero and variance one. A warning is issued otherwise.
+A rigorous bound is \eqn{R(m)\leq A/m}, with
+\deqn{A=\frac{\sigma^2\sum_iD_i|1/\tau_0^2-c_i/\tau_1^2|}{s}.}
+Therefore the exact search need only inspect integers through
+\eqn{\max\{2,\lceil A/\gamma\rceil\}}. It checks every integer up to this bound, including possible later violations after an initial crossing, and returns one more than the last violation (or 2 if none). All larger integers satisfy the tolerance by the bound. This definition concerns integer replication; crossings at fractional replication are not evaluated.
+
+If \code{max_search} is insufficient, \code{m_exact} is \code{NA}, with status \code{search_limit}, the evaluated endpoint, and a certified sufficient \code{sufficient_m}. Increase the search limit to resolve the exact minimum. When \eqn{s=0}, the \eqn{1/m} bound does not apply: \code{m_approx=Inf}, \code{m_exact=NA}, and status \code{no_within_information}. This does not assert that the exact curve never falls below tolerance. Identical covariance action on the covariate, including calibrated \eqn{\rho=0}, instead gives exact threshold 2.
+
+These are conditional coefficient variance comparisons under flat regression priors: covariance parameters and every other coefficient are fixed, with random effects integrated out. They are not guarantees for marginal posterior inference or coefficient bias. Multiple covariate columns receive separate conditional thresholds.
 }
+\value{A list with \code{m_star} (the selected method), \code{m_approx}, \code{m_exact}, \code{gamma}, \code{method}, and a \code{thresholds} data frame. The table reports the coefficient, both thresholds, \code{sufficient_m}, \code{status}, \code{searched_through}, \code{last_violation}, \code{leading_constant}, \code{tail_constant}, and \code{within_ss_per_m}. Other fields are \code{g}, \code{tau0_2}, \code{tau1_2}, \code{calibration}, \code{numerator_raw} (legacy unscaled spectral sum), \code{d_sq}, \code{eigenvalues}, \code{within_ss}, and \code{target}. \code{m_exact} is normally unevaluated for \code{method="approx"}.}
 \examples{
-set.seed(1)
-n <- 25
-W <- create_random_W(n)
-
-xbar <- rnorm(n)
-xbar <- xbar - mean(xbar)
-
-m_star(W, sigma2 = 0.5, tau2 = 0.5, rho = 0.8, xbar = xbar)
+W <- matrix(c(0, 1, 0, 1, 0, 1, 0, 1, 0), 3, 3)
+m_star(W, sigma2 = 0.5, rho = 0.8, tau0_2 = 0.5,
+       xbar = c(-0.5, 0, 0.5), method = "exact")
 }
-
-\seealso{
-\code{\link{SpThreshold}} for fitting the underlying model; \code{\link{create_random_W}} and \code{\link{create_W_from_shapefile}} for adjacency matrix construction.
-}
+\seealso{\code{\link{variance_calibration}}, \code{\link{variance_curve}}, \code{\link{variance_comparison}}}

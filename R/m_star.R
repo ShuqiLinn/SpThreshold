@@ -1,174 +1,64 @@
-#' Replication threshold for spatial vs non-spatial inference on beta_1
-#'
-#' Computes the asymptotic replication threshold \eqn{m^*} beyond which a
-#' non-spatial model yields effectively equivalent posterior inference for a
-#' regression coefficient compared to a Leroux CAR spatial model, based on the
-#' closed-form bound derived in the manuscript.
-#'
-#' @param W Adjacency matrix, an \eqn{n \times n} symmetric matrix of 0/1
-#'   entries, where \eqn{w_{ii'} = 1} indicates that areas \eqn{i} and
-#'   \eqn{i'} are neighbors. Must correspond to a connected graph.
-#' @param sigma2 Within-area residual variance.
-#' @param tau2 Spatial random-effect variance.
-#' @param rho Spatial correlation parameter in \eqn{[0, 1)}.
-#' @param xbar Optional length-\eqn{n} vector of location-level covariate
-#'   means. If supplied, \code{X} and \code{loc} are ignored.
-#' @param X Optional covariate vector (length \eqn{N}, where \eqn{N = nm}).
-#'   Used together with \code{loc} to compute \code{xbar} internally.
-#' @param loc Optional integer vector (length \eqn{N}) identifying the spatial
-#'   unit for each observation in \code{X}.
-#' @param gamma Tolerance for the maximum acceptable relative difference in
-#'   posterior variance. Default is \code{0.05}.
-#'
-#' @return A list with components
-#'   \describe{
-#'     \item{\code{m_star}}{Integer replication threshold.}
-#'     \item{\code{gamma}}{Tolerance used in the computation.}
-#'     \item{\code{numerator_raw}}{Signed value of
-#'       \eqn{\sum_i d_i^2 (1 - \lambda_i)} before taking the absolute value;
-#'       useful for diagnosing the sign of the untransformed bound.}
-#'     \item{\code{d_sq}}{Length-\eqn{n} vector of squared projections
-#'       \eqn{d_i^2}.}
-#'     \item{\code{eigenvalues}}{Eigenvalues of the graph Laplacian, sorted in
-#'       ascending order.}
-#'   }
-#'
-#' @details The function implements
-#' \deqn{m^* = \max\left\{2, \left\lceil \frac{\sigma^2 \rho \left|\sum_{i=1}^{n} d_i^2 (1 - \lambda_i)\right|}{\gamma \tau^2 \left(n - \sum_{i=1}^{n} d_i^2\right)} \right\rceil \right\},}
-#' where \eqn{\lambda_i} are the eigenvalues of the graph Laplacian of
-#' \code{W} and \eqn{d_i = \sum_{j} \bar{x}_{j \cdot} u_{ij}} is the projection
-#' of the location-level covariate means onto the \eqn{i}th eigenvector. The
-#' derivation is given in Section 3.2 of the paper.
-#'
-#' When \code{X} and \code{loc} are supplied instead of \code{xbar}, the
-#' covariate is expected to be pre-standardized to population mean zero and
-#' variance one; a warning is issued otherwise.
-#'
-#' @examples
-#' # A small random connected graph
-#' set.seed(1)
-#' n <- 25
-#' W <- matrix(0, n, n)
-#' perm <- sample(n)
-#' for (i in 2:n) {
-#'    a <- perm[i]; b <- perm[sample.int(i - 1, 1)]
-#'    W[a, b] <- 1; W[b, a] <- 1
-#' }
-#'
-#' # Covariate varying across locations
-#' xbar <- rnorm(n)
-#' xbar <- xbar - mean(xbar)
-#'
-#' m_star(W, sigma2 = 0.5, tau2 = 0.5, rho = 0.8, xbar = xbar)
-#'
-#'
-#' @export
-m_star <- function(W, sigma2, tau2, rho,
-                   xbar = NULL,
-                   X = NULL,
-                   loc = NULL,
-                   gamma = 0.05) {
-
-   ## -- Input dispatch ------------------------------------------------------
-   n <- nrow(W)
-
-   if (is.null(xbar) && (is.null(X) || is.null(loc))) {
-      stop("Supply either xbar (location-level means) or both X and loc.")
-   }
-
-   if (is.null(xbar)) {
-      ## Option B: compute xbar from raw covariate and location indicator
-      if (length(X) != length(loc)) {
-         stop("X and loc must have the same length.")
+# See man/m_star.Rd for the exact and leading-order definitions.
+m_star <- function(W, sigma2, tau2 = NULL, rho, xbar = NULL, X = NULL,
+                   loc = NULL, gamma = 0.05, tau0_2 = NULL, tau1_2 = NULL,
+                   method = c("approx", "exact"), within_ss = NULL,
+                   calibration = c("full", "common"), max_search = 1e6) {
+  method <- match.arg(method)
+  .threshold_scalar(sigma2, "sigma2")
+  .threshold_scalar(gamma, "gamma")
+  .threshold_scalar(max_search, "max_search", 1)
+  if (max_search != floor(max_search)) stop("max_search must be an integer.", call. = FALSE)
+  cal <- variance_calibration(W, rho, tau0_2, tau1_2, tau2, calibration)
+  dd <- .threshold_balanced(cal, xbar, X, loc, within_ss)
+  cc <- .threshold_components(cal, dd, sigma2)
+  p <- length(dd$within_ss)
+  approx <- pmax(2, ceiling(abs(cc$leading_signed) / gamma))
+  approx[dd$within_ss == 0] <- Inf
+  approx[cc$identical] <- 2
+  sufficient <- pmax(2, ceiling(cc$tail_constant / gamma))
+  sufficient[cc$identical] <- 2
+  exact <- rep(NA_real_, p)
+  searched <- rep(NA_real_, p)
+  last_bad <- rep(NA_real_, p)
+  status <- ifelse(dd$within_ss > 0, "approximation_only", "no_within_information")
+  exact[cc$identical] <- 2
+  status[cc$identical] <- "identical_for_this_covariate"
+  if (method == "exact") {
+    for (j in seq_len(p)) {
+      if (cc$identical[j] || dd$within_ss[j] == 0) next
+      upper <- sufficient[j]
+      stop_at <- min(upper, max_search)
+      dj <- list(d_sq = dd$d_sq[, j, drop = FALSE],
+                 within_ss = dd$within_ss[j], coefficient = dd$coefficient[j])
+      bad <- 1
+      # Chunked evaluation caps memory while checking every integer. No
+      # monotonicity or first-crossing assumption is made.
+      for (start in seq(2, stop_at, by = 10000)) {
+        mm <- seq(start, min(stop_at, start + 9999), by = 1)
+        rel <- .threshold_curve(mm, cal, dj, sigma2)$relative_difference
+        hit <- mm[rel > gamma]
+        if (length(hit)) bad <- max(bad, hit)
       }
-      if (!all(loc %in% seq_len(n))) {
-         stop("loc values must be integers in 1, ..., nrow(W).")
-      }
-
-      ## Check standardization: population mean ~ 0 and population variance ~ 1
-      x_mean <- mean(X)
-      x_var  <- mean((X - x_mean)^2)
-
-      if (abs(x_mean) > 1e-6 || abs(x_var - 1) > 1e-3) {
-         warning("X does not appear to be standardized to population mean 0 and variance 1. ",
-                 "The bound assumes this standardization; results may be misleading otherwise.")
-      }
-
-      xbar <- tapply(X, loc, mean)
-      xbar <- as.numeric(xbar)
-   }
-
-   if (length(xbar) != n) {
-      stop(sprintf("length(xbar) = %d does not match nrow(W) = %d.",
-                   length(xbar), n))
-   }
-   
-   ## -- Check xbar consistency with the standardization assumption ----------
-   ## Under population standardization of x_ij (mean 0, variance 1 across all
-   ## nm observations), sum(xbar^2) <= n and mean(xbar) is near 0. Violations
-   ## indicate that xbar was not derived from a properly standardized
-   ## covariate, in which case the bound's derivation does not apply.
-   if (sum(xbar^2) > n + sqrt(.Machine$double.eps) * n) {
-      warning("sum(xbar^2) exceeds n, which is inconsistent with xbar being ",
-              "the location-level mean of a covariate standardized to ",
-              "population mean 0 and variance 1. The bound assumes this ",
-              "standardization; results may be misleading.")
-   }
-   if (abs(mean(xbar)) > 1e-6) {
-      warning("xbar does not appear to be centered (mean is not approximately ",
-              "0). The bound assumes xbar derives from a covariate standardized ",
-              "to population mean 0; results may be misleading.")
-   }
-
-   ## -- Validate variance and correlation arguments -------------------------
-   if (sigma2 <= 0 || tau2 <= 0) {
-      stop("sigma2 and tau2 must be positive.")
-   }
-   if (rho < 0 || rho >= 1) {
-      stop("rho must lie in [0, 1).")
-   }
-   if (gamma <= 0 ) {
-      stop("gamma must be positive")
-   }
-
-   ## -- Eigendecomposition of the graph Laplacian ---------------------------
-   L <- diag(rowSums(W)) - W
-   eig <- eigen(L, symmetric = TRUE)
-
-   ## Order ascending so lambda_1 = 0
-   ord <- order(eig$values)
-   lambda <- eig$values[ord]
-   U      <- eig$vectors[, ord]
-
-   ## -- Projections d_i and summations --------------------------------------
-   ## d_i = sum_j xbar_j u_{ij} = (U^T xbar)_i
-   d <- as.numeric(crossprod(U, xbar))
-   d_sq <- d^2
-   sum_d_sq <- sum(d_sq)
-
-   num_signed <- sum(d_sq * (1 - lambda))
-   den <- n - sum_d_sq
-
-   ## -- Asymptotic bound ----------------------------------------------------
-   ## When the covariate has no within-location variation (C3), standardization 
-   ## yields sum(d_sq) ~ n up to floating-point noise, so the denominator n - sum(d_sq) collapses to (numerically) zero
-   ## and the bound is infinite.  A tolerance of sqrt(.Machine$double.eps) * n
-   ## on the denominator is used to catch this case robustly.
-   if (abs(den) < sqrt(.Machine$double.eps) * n) {
-      return(list(m_star        = Inf,
-                  gamma       = gamma,
-                  numerator_raw = num_signed,
-                  d_sq          = d_sq,
-                  eigenvalues   = lambda))
-   }
-
-   m_raw <- (sigma2 * rho * abs(num_signed)) / (gamma * tau2 * den)
-   m_out <- max(2, ceiling(m_raw))
-
-   list(m_star        = m_out,
-        gamma       = gamma,
-        numerator_raw = num_signed,
-        d_sq          = d_sq,
-        eigenvalues   = lambda)
-
+      searched[j] <- stop_at
+      last_bad[j] <- if (bad == 1) NA_real_ else bad
+      if (stop_at >= upper) {
+        exact[j] <- max(2, bad + 1)
+        status[j] <- "certified_integer_threshold"
+      } else status[j] <- "search_limit"
+    }
+  }
+  selected <- if (method == "exact") exact else approx
+  names(selected) <- names(approx) <- names(exact) <- dd$coefficient
+  tab <- data.frame(coefficient = dd$coefficient, m_approx = unname(approx),
+    m_exact = unname(exact), sufficient_m = sufficient,
+    status = status, searched_through = searched, last_violation = last_bad,
+    leading_constant = abs(cc$leading_signed), tail_constant = cc$tail_constant,
+    within_ss_per_m = dd$within_ss, stringsAsFactors = FALSE)
+  list(m_star = selected, m_approx = approx, m_exact = exact, gamma = gamma,
+       method = method, thresholds = tab, g = cal$g, tau0_2 = cal$tau0_2,
+       tau1_2 = cal$tau1_2, calibration = cal$calibration,
+       numerator_raw = colSums(dd$d_sq * (1 - cal$eigenvalues)),
+       d_sq = if (p == 1L) as.vector(dd$d_sq) else dd$d_sq,
+       eigenvalues = cal$eigenvalues, within_ss = dd$within_ss,
+       target = "Conditional Gaussian coefficient variance; not marginal posterior variance")
 }
