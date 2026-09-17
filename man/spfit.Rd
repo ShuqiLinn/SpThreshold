@@ -2,7 +2,7 @@
 % Please edit documentation in R/spfit.R
 \name{spfit}
 \alias{spfit}
-\title{Fit a Bayesian hierarchical multilevel model for areal spatial data}
+\title{Fit a Bayesian multilevel model with spatial or iid random effects}
 \usage{
 spfit(
   data = NULL,
@@ -27,133 +27,104 @@ spfit(
   sigma2_init = NULL,
   tau2_init = NULL,
   rho_init = NULL,
-  proposal_sd_init = NULL
+  proposal_sd_init = NULL,
+  family = "gaussian",
+  trials = 1,
+  nb_size = NULL,
+  offset = 0,
+  beta_prior_mean = 0,
+  beta_prior_sd = 10,
+  center = TRUE,
+  pg_method = c("devroye", "hybrid"),
+  verbose = FALSE
 )
 }
 \arguments{
-\item{data}{A data frame containing the response, covariate(s), and the
-area-identifier column. Required if using the data frame interface.}
+\item{data, formula, area}{Data-frame interface: a data frame, a two-sided
+formula, and the name of its integer location column. Formula offsets are
+supported. Use this interface or the vector interface, not both.}
 
-\item{formula}{A two-sided formula of the form \code{y ~ x}, where \code{y}
-is the response column in \code{data} and \code{x} is the covariate
-column. Required if using the data frame interface.}
+\item{y, X, loc}{Vector interface: numeric response, numeric design matrix,
+and integer location identifiers in \code{1:nrow(W)}. Include an intercept
+in \code{X} if required. For binomial responses, use success counts in
+\code{y} and specify \code{trials} separately.}
 
-\item{area}{A length-1 character string giving the column name in
-\code{data} that identifies each observation's spatial unit. Values must
-be integers in \code{1:n}, where \code{n = nrow(W)}. Required if using
-the data frame interface.}
+\item{W}{Symmetric nonnegative adjacency matrix with zero diagonal.}
 
-\item{y}{Numeric response vector of length \eqn{N = nm}. Required if using
-the vector interface.}
+\item{model_indicator}{One for the spatial model; zero for iid random effects.}
 
-\item{X}{Numeric design matrix of dimension \eqn{N \times p}, including the
-intercept column if needed. Required if using the vector interface.}
+\item{mcmc_samples}{Number of saved states, including the initial state.
+There are \code{mcmc_samples - 1} sampling updates.}
 
-\item{loc}{Integer vector of length \eqn{N} identifying the spatial unit of
-each observation. Values must be integers in \code{1:n}. Required if
-using the vector interface.}
+\item{burnin}{Number of updates during which rho proposals are adapted.
+Draws are not discarded internally. See \code{\link{posterior_draws}}.}
 
-\item{W}{An \eqn{n \times n} symmetric adjacency matrix of 0/1 entries.
-Required for both spatial and nonspatial models (used to determine
-\code{n}). For the spatial model, \code{W} must correspond to a
-connected graph.}
+\item{adapt_rho}{Adapt the logit-scale rho proposal during burn-in.}
 
-\item{model_indicator}{\code{1} for the spatial (Leroux CAR) model;
-\code{0} for the nonspatial (iid random effect) model.}
+\item{a_sigma2_prior, b_sigma2_prior}{Gaussian residual inverse-gamma shape
+and rate parameters. NULL uses 0.01.}
 
-\item{mcmc_samples}{Total number of MCMC iterations to draw, including the
-burn-in period. The user is responsible for discarding burn-in samples
-and applying any thinning post-hoc.}
+\item{a_tau2_prior, b_tau2_prior}{Random-effect inverse-gamma shape and rate.
+NULL uses 0.01.}
 
-\item{burnin}{Number of iterations during which the Metropolis proposal
-standard deviation for \eqn{\rho} is adapted (spatial model only). Has
-no effect on the returned samples.}
+\item{a_rho_prior, b_rho_prior}{Beta prior parameters for rho. NULL uses one.}
 
-\item{adapt_rho}{Logical; whether to apply Robbins-Monro adaptation of the
-Metropolis proposal SD during \code{burnin}. Spatial model only.}
+\item{beta_init, theta_init, sigma2_init, tau2_init, rho_init}{Starting values.
+NULL uses zero coefficients/random effects, unit variances, and rho=0.5.}
 
-\item{a_sigma2_prior, b_sigma2_prior}{Shape and rate parameters of the
-inverse-gamma prior on \eqn{\sigma^2}. Defaults to \code{0.01}.}
+\item{proposal_sd_init}{Initial logit-rho proposal SD. NULL uses 0.3.}
 
-\item{a_tau2_prior, b_tau2_prior}{Shape and rate parameters of the
-inverse-gamma prior on \eqn{\tau^2}. Defaults to \code{0.01}.}
+\item{family}{One of \code{"gaussian"}, \code{"bernoulli"},
+\code{"binomial"}, or \code{"negative_binomial"}; \code{"negbin"} is an alias.}
 
-\item{a_rho_prior, b_rho_prior}{Shape parameters of the Beta prior on
-\eqn{\rho}. Defaults to \code{1.0} (\eqn{\rho \sim \text{Uniform}(0, 1)}).}
+\item{trials}{Binomial trial counts; scalar or one per observation.}
 
-\item{beta_init, theta_init, sigma2_init, tau2_init, rho_init}{Optional
-starting values. If \code{NULL}, defaults are used: \code{beta = 0},
-\code{theta = 0}, \code{sigma2 = 1}, \code{tau2 = 1}, \code{rho = 0.5}.}
+\item{nb_size}{Fixed positive negative-binomial size. Required for that
+family; dispersion is not estimated. See \code{\link{spfit_glmm}}.}
 
-\item{proposal_sd_init}{Initial Metropolis proposal SD on the logit-\eqn{\rho}
-scale. Spatial model only. Default is \code{0.30}.}
+\item{offset}{Known linear-predictor offset, scalar or one per observation.}
+
+\item{beta_prior_mean, beta_prior_sd}{Regression prior for count/binary
+families: independent normal means and SDs, default zero and ten. Infinite
+SD requests a flat prior. Gaussian fits use the existing flat prior.}
+
+\item{center}{Sum-to-zero constraint for the count/binary families, using
+a constrained Gaussian draw. The Gaussian sampler keeps its existing
+centering convention; \code{center=FALSE} is not supported for Gaussian.}
+
+\item{pg_method}{\code{"devroye"} uses exact integer-shape Polya--Gamma
+sampling. \code{"hybrid"} permits noninteger NB sizes using BayesLogit's
+hybrid algorithm, which can use numerical approximations.}
+
+\item{verbose}{Print Gaussian sampling progress.}
 }
 \value{
-A named list with components:
-  \describe{
-    \item{\code{beta}}{A \eqn{p \times} \code{mcmc_samples} matrix; each
-      column is one posterior draw of \eqn{\boldsymbol{\beta}}.}
-    \item{\code{theta}}{An \eqn{n \times} \code{mcmc_samples} matrix.}
-    \item{\code{sigma2}, \code{tau2}}{Vectors of length \code{mcmc_samples}.}
-    \item{\code{rho}}{Vector of length \code{mcmc_samples} (spatial model
-      only).}
-    \item{\code{accept_rho}}{Total acceptance count of the Metropolis
-      step (spatial model only).}
-    \item{\code{final_proposal_sd}}{Final adapted proposal SD on the
-      logit-\eqn{\rho} scale (spatial model only).}
-    \item{\code{call}}{The matched call.}
-    \item{\code{model_indicator}}{The value of \code{model_indicator} used.}
-  }
+A \code{spfit} list containing draws of beta (parameters by states),
+  theta (locations by states), tau2 and, for spatial models, rho. Gaussian
+  fits also return sigma2. Metadata identify the family, initial-state
+  convention, burn-in, and fitted design. The Gaussian \code{kernel} records
+  which numerical implementation was used.
 }
 \description{
-Fits the model
-\deqn{Y_{ij} = \beta_0 + \beta_1 x_{ij} + \theta_i + \varepsilon_{ij}}
-under either a Leroux conditional autoregressive prior on \eqn{\theta}
-(\code{model_indicator = 1}, the spatial model) or an iid Gaussian prior on
-\eqn{\theta} (\code{model_indicator = 0}, the nonspatial model). Posterior
-sampling is performed by a Markov chain Monte Carlo algorithm implemented
-in C++, with adaptive Metropolis tuning for \eqn{\rho} during burn-in.
+Gaussian models use a Leroux CAR or iid Gaussian random-effect prior.
+Bernoulli, binomial and negative-binomial models use Polya--Gamma augmentation.
+Multiple covariates and unequal observation counts are supported.
 }
 \details{
-Two input interfaces are supported and are mutually exclusive:
-\itemize{
-   \item \strong{Data frame interface:} pass \code{data}, \code{formula}, and
-     \code{area}. An intercept is included automatically via the formula
-     (e.g., \code{y ~ x} fits an intercept and a slope on \code{x}). To
-     fit without an intercept, write \code{y ~ x + 0} or \code{y ~ x - 1}.
-   \item \strong{Vector interface:} pass \code{y}, \code{X}, and \code{loc}.
-     The intercept is \emph{not} added automatically; include a column of
-     1s in \code{X} (e.g., \code{cbind(1, x)}) if an intercept is desired.
-}
-Mixing the two interfaces is an error.
-
-Burn-in and thinning are not applied internally. The returned
-  sample matrices and vectors all have \code{mcmc_samples} columns/entries,
-  including the initial state. Apply burn-in by discarding the first
-  \code{burnin} columns/entries:
-\preformatted{
-fit <- spfit(..., mcmc_samples = 11000, burnin = 1000)
-beta_kept <- fit$beta[, (1001:11000)]
-}
+Gaussian sampling preserves the original update order, priors and
+  centering. Binary/count families have explicitly specified regression
+  priors and a proper sum-to-zero implementation when \code{center=TRUE}.
+  Their thresholds are not given by the Gaussian replication formulas.
+  Use \code{posterior_draws()} or \code{posterior_summary()} to discard the
+  initial state and the requested burn-in updates consistently.
 }
 \examples{
-\dontrun{
 set.seed(1)
-n <- 25
-m <- 10
-W <- create_random_W(n)
-loc <- rep(1:n, each = m)
-x <- rnorm(n*m)
-y <- 1 + 2*x + rnorm(n*m, sd = 0.5)
-
-# Vector interface
+W <- create_random_W(5)
+loc <- rep(1:5, each = 4)
+x <- rnorm(20)
+y <- 1 + x + rnorm(20)
 fit <- spfit(y = y, X = cbind(1, x), loc = loc, W = W,
-             model_indicator = 1, mcmc_samples = 5000, burnin = 1000)
-
-# Data frame interface (equivalent)
-df <- data.frame(y = y, x = x, area = loc)
-fit2 <- spfit(data = df, formula = y ~ x, area = "area", W = W,
-              model_indicator = 1, mcmc_samples = 5000, burnin = 1000)
-}
-
+             model_indicator = 0, mcmc_samples = 101, burnin = 20)
+posterior_summary(fit)
 }
