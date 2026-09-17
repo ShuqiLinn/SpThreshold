@@ -65,6 +65,7 @@ Rcpp::List SpThreshold(int mcmc_samples,
                        Rcpp::Nullable<double> tau2_init,
                        Rcpp::Nullable<double> rho_init,
                        int burnin,
-                       bool adapt_rho);
+                       bool adapt_rho,
+                       bool verbose);
 
 #endif // __SpThreshold__

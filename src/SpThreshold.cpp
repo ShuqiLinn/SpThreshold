@@ -25,9 +25,14 @@ Rcpp::List SpThreshold(int mcmc_samples,
                        Rcpp::Nullable<double> tau2_init = R_NilValue,
                        Rcpp::Nullable<double> rho_init = R_NilValue,
                        int burnin = 0,
-                       bool adapt_rho = true){
+                       bool adapt_rho = true,
+                       bool verbose = true){
 
 //Data dimensions
+if(mcmc_samples < 1) Rcpp::stop("mcmc_samples must be positive.");
+if(y.n_elem == 0 || X.n_rows != y.n_elem || loc.n_elem != y.n_elem || X.n_cols == 0)
+  Rcpp::stop("Incompatible or empty y, X, and loc.");
+if(model_indicator != 0 && model_indicator != 1) Rcpp::stop("model_indicator must be 0 or 1.");
 int N = y.n_elem;
 int p = X.n_cols;
 
@@ -124,27 +129,50 @@ if(rho_init.isNotNull()){
    rho = Rcpp::as<double>(rho_init);
    }
 
-//Initialize Q and log|Q|
-//Spatial:     Q = rho*(D - W) + (1 - rho)*I
-//Nonspatial:  Q = I  (effectively rho = 0)
-arma::mat Q(n, n); Q.fill(0.00);
-double Q_log_det = 0.00;
-double sign_det = 0.00;
-
+// Cache all quantities that do not depend on the MCMC state.  The
+// Laplacian eigenvectors are also eigenvectors of the balanced conditional
+// precision, so no matrix inverse or Cholesky is required inside that loop.
+if(beta.n_elem != (arma::uword)p || theta.n_elem != (arma::uword)n)
+  Rcpp::stop("Initial beta or theta has the wrong length.");
+if(!(sigma2 > 0 && tau2 > 0 && a_sigma2 > 0 && b_sigma2 > 0 &&
+     a_tau2 > 0 && b_tau2 > 0 && a_rho > 0 && b_rho > 0 && proposal_sd > 0))
+  Rcpp::stop("Variance, prior, and proposal parameters must be positive.");
+if(model_indicator == 1 && !(rho > 0 && rho < 1))
+  Rcpp::stop("Initial rho must lie strictly between zero and one.");
+arma::mat XtX_inverse;
+if(!arma::inv_sympd(XtX_inverse, X.t()*X))
+  Rcpp::stop("X must have full column rank under the flat regression prior.");
+const arma::mat beta_root = arma::chol(XtX_inverse).t();
+const arma::vec Xty = X.t()*y;
+arma::vec Zty(n, arma::fill::zeros);
+arma::mat ZtX(n, p, arma::fill::zeros);
+for(int i = 0; i < N; ++i){
+  Zty(loc(i)) += y(i);
+  ZtX.row(loc(i)) += X.row(i);
+}
+const bool balanced = arma::all(m_vec == m_vec(0));
+arma::mat laplacian, eigenvectors;
+arma::vec eigenvalues;
 if(model_indicator == 1){
-  
-   arma::mat D = arma::diagmat(arma::sum(W_mat, 1));
-   Q = rho*(D - W_mat) +
-       (1.00 - rho)*arma::eye(n, n);
-   arma::log_det(Q_log_det, sign_det, Q);
-  
-   }
-if(model_indicator == 0){
-  
-   Q = arma::eye(n, n);
-   Q_log_det = 0.00;
-  
-   }
+  if(W_mat.n_rows != (arma::uword)n || W_mat.n_cols != (arma::uword)n ||
+     !W_mat.is_finite() || !W_mat.is_symmetric(1e-10) || W_mat.min() < 0)
+    Rcpp::stop("W must be a finite symmetric nonnegative n by n matrix.");
+  laplacian = arma::diagmat(arma::sum(W_mat, 1)) - W_mat;
+  if(!arma::eig_sym(eigenvalues, eigenvectors, laplacian))
+    Rcpp::stop("Laplacian eigendecomposition failed.");
+  // A nonnegative symmetric adjacency has a positive semidefinite Laplacian.
+  // Remove only tiny negative roundoff at its zero eigenvalues.
+  eigenvalues.transform([](double x){ return std::max(0.0, x); });
+}
+arma::vec eigen_Zty, eigen_ones;
+arma::mat eigen_ZtX;
+if(model_indicator == 1 && balanced){
+  eigen_Zty = eigenvectors.t()*Zty;
+  eigen_ZtX = eigenvectors.t()*ZtX;
+  eigen_ones = eigenvectors.t()*arma::ones(n);
+}
+const std::string kernel = model_indicator == 0 ? "iid_diagonal" :
+  (balanced ? "balanced_spectral" : "unbalanced_precision_cholesky");
 
 //Store first iteration
 beta_samples.col(0) = beta;
@@ -160,27 +188,66 @@ int acc_rho_batch = 0;
 //Main loop
 for(int iter = 1; iter < mcmc_samples; ++iter){
   
-   //1) beta update
-   beta = beta_update(N, p, y, X, loc, theta, sigma2);
-  
-   //2) theta update
-   theta = theta_update(N, n, y, X, loc, m_vec, beta, sigma2, tau2, Q);
-  
-   //3) tau2 update
-   tau2 = tau2_update(n, theta, Q, a_tau2, b_tau2);
-  
+   //1) beta update: cached X'X, X'y, and X'Z; same flat-prior conditional.
+   arma::vec z_beta(p);
+   for(int k = 0; k < p; ++k) z_beta(k) = R::rnorm(0.0, 1.0);
+   beta = XtX_inverse*(Xty - ZtX.t()*theta) + sqrt(sigma2)*beta_root*z_beta;
+
+   //2) theta update.  Each branch draws from the same uncentered Gaussian
+   // conditional as before, then applies the existing centering operation.
+   const arma::vec rhs = (Zty - ZtX*beta)/sigma2;
+   arma::vec z_theta(n);
+   for(int k = 0; k < n; ++k) z_theta(k) = R::rnorm(0.0, 1.0);
+   arma::vec theta_spectral;
+   if(model_indicator == 0){
+     const arma::vec precision = m_vec/sigma2 + 1.0/tau2;
+     theta = rhs/precision + z_theta/arma::sqrt(precision);
+   } else if(balanced){
+     const arma::vec precision = m_vec(0)/sigma2 +
+       (1.0 - rho + rho*eigenvalues)/tau2;
+     theta_spectral = (eigen_Zty - eigen_ZtX*beta)/(sigma2*precision) +
+       z_theta/arma::sqrt(precision);
+     theta = eigenvectors*theta_spectral;
+   } else {
+     arma::mat precision = rho*laplacian/tau2;
+     precision.diag() += m_vec/sigma2 + (1.0-rho)/tau2;
+     // precision = U' U; U^{-1} z has covariance precision^{-1}.
+     const arma::mat upper = arma::chol(precision);
+     const arma::vec lower_solution = arma::solve(arma::trimatl(upper.t()), rhs);
+     theta = arma::solve(arma::trimatu(upper), lower_solution + z_theta);
+   }
+   const double theta_mean = arma::mean(theta);
+   theta -= theta_mean;
+   if(model_indicator == 1 && balanced) theta_spectral -= theta_mean*eigen_ones;
+
+   //3) tau2 update: preserve n/2 (no degrees-of-freedom recalibration).
+   const double quad_i = arma::dot(theta, theta);
+   const double quad_l = model_indicator == 1 ?
+     arma::dot(eigenvalues, arma::square(balanced ? theta_spectral : arma::vec(eigenvectors.t()*theta))) : 0.0;
+   const double quad_q = model_indicator == 1 ?
+     rho*quad_l + (1.0-rho)*quad_i : quad_i;
+   tau2 = 1.0/R::rgamma(n/2.0 + a_tau2, 1.0/(0.5*quad_q + b_tau2));
+
    //4) sigma2 update
    sigma2 = sigma2_update(N, y, X, loc, beta, theta, a_sigma2, b_sigma2);
-  
-   //5) rho update (spatial only)
+
+   //5) rho update: the same logit random walk and Jacobian, using cached
+   // eigenvalues for log|Q| and the two quadratic forms for theta'Q theta.
    if(model_indicator == 1){
-     
-      Rcpp::List rho_out = rho_update(n, W_mat, theta, tau2, rho, Q,
-                                       Q_log_det, proposal_sd, a_rho, b_rho);
-      rho       = Rcpp::as<double>(rho_out["rho"]);
-      Q         = Rcpp::as<arma::mat>(rho_out["Q"]);
-      Q_log_det = Rcpp::as<double>(rho_out["Q_log_det"]);
-      int accept = Rcpp::as<int>(rho_out["accept"]);
+      const double logit_rho = log(rho/(1.0-rho));
+      const double logit_prop = R::rnorm(logit_rho, proposal_sd);
+      const double rho_prop = 1.0/(1.0 + exp(-logit_prop));
+      double log_acc = R_NegInf;
+      if(rho_prop > 0.0 && rho_prop < 1.0){
+        const double logdet_old = arma::accu(arma::log(1.0-rho + rho*eigenvalues));
+        const double logdet_prop = arma::accu(arma::log(1.0-rho_prop + rho_prop*eigenvalues));
+        log_acc = 0.5*(logdet_prop-logdet_old) -
+          0.5*(rho_prop-rho)*(quad_l-quad_i)/tau2 +
+          a_rho*(log(rho_prop)-log(rho)) +
+          b_rho*(log1p(-rho_prop)-log1p(-rho));
+      }
+      const int accept = log(R::runif(0.0, 1.0)) < log_acc ? 1 : 0;
+      if(accept) rho = rho_prop;
       acc_rho_total = acc_rho_total +
                       accept;
       acc_rho_batch = acc_rho_batch +
@@ -227,7 +294,7 @@ for(int iter = 1; iter < mcmc_samples; ++iter){
      Rcpp::checkUserInterrupt();
      }
   
-   if((iter + 1) % int(round(mcmc_samples*0.10)) == 0){
+   if(verbose && (iter + 1) % std::max(1, int(round(mcmc_samples*0.10))) == 0){
      
       double completion = round(100.00*(iter + 1)/(double)mcmc_samples);
       Rcpp::Rcout << "Progress: " << completion << "%";
@@ -253,13 +320,15 @@ if(model_indicator == 1){
                              Rcpp::Named("tau2")              = tau2_samples,
                              Rcpp::Named("rho")               = rho_samples,
                              Rcpp::Named("accept_rho")        = acc_rho_total,
-                             Rcpp::Named("final_proposal_sd") = proposal_sd);
+                             Rcpp::Named("final_proposal_sd") = proposal_sd,
+                             Rcpp::Named("kernel") = kernel);
   
    }
 
 return Rcpp::List::create(Rcpp::Named("beta")   = beta_samples,
                           Rcpp::Named("theta")  = theta_samples,
                           Rcpp::Named("sigma2") = sigma2_samples,
-                          Rcpp::Named("tau2")   = tau2_samples);
+                          Rcpp::Named("tau2")   = tau2_samples,
+                          Rcpp::Named("kernel") = kernel);
 
 }
