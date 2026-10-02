@@ -14,7 +14,7 @@ double tau2_update(int n,
 
 double quad = dot(theta, (Q*theta));
 
-double a_tau2_update = n/2.00 +
+double a_tau2_update = (n-1.00)/2.00 +
                        a_tau2;
 double b_tau2_update = 0.50*quad +
                        b_tau2;

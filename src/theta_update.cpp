@@ -48,9 +48,10 @@ for(int k = 0; k < n; ++k){
 //Cov(U^{-1} z) = (U' U)^{-1}.
 arma::vec theta = mean_theta + arma::solve(arma::trimatu(upper), z);
 
-//Sum-to-zero constraint
-theta = theta +
-        -arma::mean(theta);
+// Exact conditioning on 1' theta = 0, including unequal location counts.
+arma::vec lower_ones = arma::solve(arma::trimatl(upper.t()), arma::vec(n, arma::fill::ones));
+arma::vec covariance_ones = arma::solve(arma::trimatu(upper), lower_ones);
+theta -= covariance_ones * (arma::accu(theta)/arma::accu(covariance_ones));
 
 return(theta);
 

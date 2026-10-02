@@ -35,9 +35,9 @@
 #' @param beta_prior_mean,beta_prior_sd Regression prior for count/binary
 #'   families: independent normal means and SDs, default zero and ten. Infinite
 #'   SD requests a flat prior. Gaussian fits use the existing flat prior.
-#' @param center Sum-to-zero constraint for the count/binary families, using
-#'   a constrained Gaussian draw. The Gaussian sampler keeps its existing
-#'   centering convention; \code{center=FALSE} is not supported for Gaussian.
+#' @param center Use an exact sum-to-zero Gaussian conditional draw for the
+#'   random effects. Gaussian fits require \code{center=TRUE} and an intercept;
+#'   binary/count fits also allow \code{center=FALSE}.
 #' @param pg_method The only supported value is \code{"devroye"}, using
 #'   \pkg{pgdraw} for integer-shape Polya--Gamma draws.
 #' @param verbose Print Gaussian sampling progress.
@@ -45,10 +45,20 @@
 #'   theta (locations by states), tau2 and, for spatial models, rho. Gaussian
 #'   fits also return sigma2. Metadata identify the family, initial-state
 #'   convention, burn-in, and fitted design. The Gaussian \code{kernel} records
-#'   which numerical implementation was used.
-#' @details Gaussian sampling preserves the original update order, priors and
-#'   centering. Binary/count families have explicitly specified regression
-#'   priors and a proper sum-to-zero implementation when \code{center=TRUE}.
+#'   which numerical implementation was used. Gaussian metadata also include
+#'   \code{sampler_version}, \code{random_effect_rank}, and
+#'   \code{intercept_parameterization}.
+#' @details Gaussian fits use the normalized random-effect prior on the
+#'   sum-zero subspace. The variance update uses rank \eqn{n-1}, and the
+#'   correlation determinant excludes the global constant eigencomponent.
+#'   With a flat intercept prior, this preserves the slope and covariance
+#'   parameter posterior of the unrestricted proper Leroux model. The stored
+#'   intercept is \eqn{\beta_0+\bar\theta}, and stored random effects are
+#'   \eqn{\theta_i-\bar\theta}; the original intercept marginal is different.
+#'   Noncentered Gaussian initial random effects are centered while the
+#'   intercept is shifted to preserve the initial linear predictor.
+#'   Binary/count families have explicitly specified regression priors and
+#'   a normalized sum-zero prior when \code{center=TRUE}.
 #'   Their thresholds are not given by the Gaussian replication formulas.
 #'   Use \code{posterior_draws()} or \code{posterior_summary()} to discard the
 #'   initial state and the requested burn-in updates consistently.
@@ -105,7 +115,7 @@ spfit <- function(data=NULL, formula=NULL, area=NULL, y=NULL, X=NULL, loc=NULL,
     args <- args[!vapply(args,is.null,logical(1))]
     fit <- do.call(spfit_glmm,args)
   } else {
-    if (!center) stop("Gaussian fits use the existing centering convention.")
+    if (!center) stop("Gaussian fits require center=TRUE and an intercept.")
     if (qr(X)$rank<ncol(X)) stop("X must have full column rank for the Gaussian flat prior.")
     vals <- list(a_sigma2_prior=a_sigma2_prior,b_sigma2_prior=b_sigma2_prior,
       a_tau2_prior=a_tau2_prior,b_tau2_prior=b_tau2_prior,

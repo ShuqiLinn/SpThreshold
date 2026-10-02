@@ -38,6 +38,7 @@ int p = X.n_cols;
 
 //Number of spatial units = max(loc) + 1 (0-indexed)
 int n = loc.max() + 1;
+if(n < 2) Rcpp::stop("At least two locations are required.");
 
 //Per-location replication counts (for theta_update)
 arma::vec m_vec(n); m_vec.fill(0.00);
@@ -134,6 +135,22 @@ if(rho_init.isNotNull()){
 // precision, so no matrix inverse or Cholesky is required inside that loop.
 if(beta.n_elem != (arma::uword)p || theta.n_elem != (arma::uword)n)
   Rcpp::stop("Initial beta or theta has the wrong length.");
+// A flat intercept absorbs the constant random-effect component. The
+// stored intercept is alpha_0 = beta_0 + mean(theta), and theta is centered.
+int intercept_col = -1;
+for(int k = 0; k < p; ++k){
+  const double value = X(0,k);
+  if(std::abs(value) > 1e-12 &&
+     arma::max(arma::abs(X.col(k) - value)) < 1e-12){
+    intercept_col = k;
+    break;
+  }
+}
+if(intercept_col < 0)
+  Rcpp::stop("Gaussian sum-zero fits require an intercept column in X.");
+const double initial_mean = arma::mean(theta);
+theta -= initial_mean;
+beta(intercept_col) += initial_mean / X(0,intercept_col);
 if(!(sigma2 > 0 && tau2 > 0 && a_sigma2 > 0 && b_sigma2 > 0 &&
      a_tau2 > 0 && b_tau2 > 0 && a_rho > 0 && b_rho > 0 && proposal_sd > 0))
   Rcpp::stop("Variance, prior, and proposal parameters must be positive.");
@@ -163,6 +180,8 @@ if(model_indicator == 1){
   // A nonnegative symmetric adjacency has a positive semidefinite Laplacian.
   // Remove only tiny negative roundoff at its zero eigenvalues.
   eigenvalues.transform([](double x){ return std::max(0.0, x); });
+  // The global constant direction is exactly a null direction of L.
+  eigenvalues(0) = 0.0;
 }
 arma::vec eigen_Zty, eigen_ones;
 arma::mat eigen_ZtX;
@@ -193,8 +212,9 @@ for(int iter = 1; iter < mcmc_samples; ++iter){
    for(int k = 0; k < p; ++k) z_beta(k) = R::rnorm(0.0, 1.0);
    beta = XtX_inverse*(Xty - ZtX.t()*theta) + sqrt(sigma2)*beta_root*z_beta;
 
-   //2) theta update.  Each branch draws from the same uncentered Gaussian
-   // conditional as before, then applies the existing centering operation.
+   //2) Draw the Gaussian conditional restricted to 1' theta = 0.
+   // For an unrestricted draw with covariance V, subtract
+   // V 1 * (1' theta)/(1' V 1). With equal counts V 1 is constant.
    const arma::vec rhs = (Zty - ZtX*beta)/sigma2;
    arma::vec z_theta(n);
    for(int k = 0; k < n; ++k) z_theta(k) = R::rnorm(0.0, 1.0);
@@ -202,12 +222,17 @@ for(int iter = 1; iter < mcmc_samples; ++iter){
    if(model_indicator == 0){
      const arma::vec precision = m_vec/sigma2 + 1.0/tau2;
      theta = rhs/precision + z_theta/arma::sqrt(precision);
+     const arma::vec covariance_ones = 1.0/precision;
+     theta -= covariance_ones * (arma::accu(theta)/arma::accu(covariance_ones));
    } else if(balanced){
      const arma::vec precision = m_vec(0)/sigma2 +
        (1.0 - rho + rho*eigenvalues)/tau2;
      theta_spectral = (eigen_Zty - eigen_ZtX*beta)/(sigma2*precision) +
        z_theta/arma::sqrt(precision);
      theta = eigenvectors*theta_spectral;
+     const double theta_mean = arma::mean(theta);
+     theta -= theta_mean;
+     theta_spectral -= theta_mean*eigen_ones;
    } else {
      arma::mat precision = rho*laplacian/tau2;
      precision.diag() += m_vec/sigma2 + (1.0-rho)/tau2;
@@ -215,32 +240,33 @@ for(int iter = 1; iter < mcmc_samples; ++iter){
      const arma::mat upper = arma::chol(precision);
      const arma::vec lower_solution = arma::solve(arma::trimatl(upper.t()), rhs);
      theta = arma::solve(arma::trimatu(upper), lower_solution + z_theta);
+     const arma::vec lower_ones = arma::solve(arma::trimatl(upper.t()), arma::vec(n, arma::fill::ones));
+     const arma::vec covariance_ones = arma::solve(arma::trimatu(upper), lower_ones);
+     theta -= covariance_ones * (arma::accu(theta)/arma::accu(covariance_ones));
    }
-   const double theta_mean = arma::mean(theta);
-   theta -= theta_mean;
-   if(model_indicator == 1 && balanced) theta_spectral -= theta_mean*eigen_ones;
 
-   //3) tau2 update: preserve n/2 (no degrees-of-freedom recalibration).
+   //3) The normalized contrast prior has rank n-1. Its hyperprior is
+   // unchanged; integrating the constant component removes one dimension.
    const double quad_i = arma::dot(theta, theta);
    const double quad_l = model_indicator == 1 ?
      arma::dot(eigenvalues, arma::square(balanced ? theta_spectral : arma::vec(eigenvectors.t()*theta))) : 0.0;
    const double quad_q = model_indicator == 1 ?
      rho*quad_l + (1.0-rho)*quad_i : quad_i;
-   tau2 = 1.0/R::rgamma(n/2.0 + a_tau2, 1.0/(0.5*quad_q + b_tau2));
+   tau2 = 1.0/R::rgamma((n-1.0)/2.0 + a_tau2, 1.0/(0.5*quad_q + b_tau2));
 
    //4) sigma2 update
    sigma2 = sigma2_update(N, y, X, loc, beta, theta, a_sigma2, b_sigma2);
 
    //5) rho update: the same logit random walk and Jacobian, using cached
-   // eigenvalues for log|Q| and the two quadratic forms for theta'Q theta.
+   // contrast eigenvalues and the two quadratic forms for theta'Q theta.
    if(model_indicator == 1){
       const double logit_rho = log(rho/(1.0-rho));
       const double logit_prop = R::rnorm(logit_rho, proposal_sd);
       const double rho_prop = 1.0/(1.0 + exp(-logit_prop));
       double log_acc = R_NegInf;
       if(rho_prop > 0.0 && rho_prop < 1.0){
-        const double logdet_old = arma::accu(arma::log(1.0-rho + rho*eigenvalues));
-        const double logdet_prop = arma::accu(arma::log(1.0-rho_prop + rho_prop*eigenvalues));
+        const double logdet_old = arma::accu(arma::log(1.0-rho + rho*eigenvalues.subvec(1,n-1)));
+        const double logdet_prop = arma::accu(arma::log(1.0-rho_prop + rho_prop*eigenvalues.subvec(1,n-1)));
         log_acc = 0.5*(logdet_prop-logdet_old) -
           0.5*(rho_prop-rho)*(quad_l-quad_i)/tau2 +
           a_rho*(log(rho_prop)-log(rho)) +
@@ -321,7 +347,10 @@ if(model_indicator == 1){
                              Rcpp::Named("rho")               = rho_samples,
                              Rcpp::Named("accept_rho")        = acc_rho_total,
                              Rcpp::Named("final_proposal_sd") = proposal_sd,
-                             Rcpp::Named("kernel") = kernel);
+                             Rcpp::Named("kernel") = kernel,
+                             Rcpp::Named("sampler_version") = "gaussian_sum_zero_v2",
+                             Rcpp::Named("random_effect_rank") = n-1,
+                             Rcpp::Named("intercept_parameterization") = "beta0_plus_mean_theta");
   
    }
 
@@ -329,6 +358,9 @@ return Rcpp::List::create(Rcpp::Named("beta")   = beta_samples,
                           Rcpp::Named("theta")  = theta_samples,
                           Rcpp::Named("sigma2") = sigma2_samples,
                           Rcpp::Named("tau2")   = tau2_samples,
-                          Rcpp::Named("kernel") = kernel);
+                          Rcpp::Named("kernel") = kernel,
+                          Rcpp::Named("sampler_version") = "gaussian_sum_zero_v2",
+                          Rcpp::Named("random_effect_rank") = n-1,
+                          Rcpp::Named("intercept_parameterization") = "beta0_plus_mean_theta");
 
 }

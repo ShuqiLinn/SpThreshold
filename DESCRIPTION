@@ -1,8 +1,8 @@
 Package: SpThreshold
 Type: Package
 Title: Replication Threshold for Bayesian Multilevel Models of Areal Data
-Version: 0.1.0
-Date: 2026-09-17
+Version: 0.1.1
+Date: 2026-10-02
 Authors@R: c(
     person("Shuqi", "Lin", email = "shuqi.lin@yale.edu",
            role = c("aut", "cre"), comment = c(ORCID = "0009-0009-4016-0029")),

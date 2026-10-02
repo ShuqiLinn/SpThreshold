@@ -2,6 +2,12 @@
 
 This package fits Bayesian multilevel models for repeatedly measured areal spatial data using Leroux conditional autoregressive (CAR) or independent Gaussian random effects. It supports Gaussian, Bernoulli, binomial and negative binomial outcomes.
 
+Version 0.1.1 corrects the Gaussian sum-zero sampler, including unequal
+replication, the random-effect variance update, and the correlation
+determinant. Gaussian MCMC results from earlier versions should be rerun.
+The binary/count sampler and the conditional replication formulas are
+unchanged. See `NEWS.md` for the correction and its validation.
+
 For Gaussian outcomes, the package evaluates how within-region replication changes the conditional posterior variances of regression coefficients. It provides a closed-form leading-order approximation to the replication threshold $m^*$ and a numerical threshold based on the exact conditional variance expression. Posterior means, variances and intervals are calculated directly from MCMC draws.
 
 ## Functions
