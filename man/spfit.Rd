@@ -88,9 +88,9 @@ family; dispersion is not estimated. See \code{\link{spfit_glmm}}.}
 families: independent normal means and SDs, default zero and ten. Infinite
 SD requests a flat prior. Gaussian fits use the existing flat prior.}
 
-\item{center}{Sum-to-zero constraint for the count/binary families, using
-a constrained Gaussian draw. The Gaussian sampler keeps its existing
-centering convention; \code{center=FALSE} is not supported for Gaussian.}
+\item{center}{Use an exact sum-to-zero Gaussian conditional draw for the
+random effects. Gaussian fits require \code{center=TRUE} and an intercept;
+binary/count fits also allow \code{center=FALSE}.}
 
 \item{pg_method}{\code{"devroye"}, the only supported value, uses the
 \pkg{pgdraw} package for exact integer-shape Polya--Gamma sampling.}
@@ -102,7 +102,9 @@ A \code{spfit} list containing draws of beta (parameters by states),
   theta (locations by states), tau2 and, for spatial models, rho. Gaussian
   fits also return sigma2. Metadata identify the family, initial-state
   convention, burn-in, and fitted design. The Gaussian \code{kernel} records
-  which numerical implementation was used.
+  which numerical implementation was used. Gaussian metadata also include
+  \code{sampler_version}, \code{random_effect_rank}, and
+  \code{intercept_parameterization}.
 }
 \description{
 Gaussian models use a Leroux CAR or iid Gaussian random-effect prior.
@@ -110,9 +112,17 @@ Bernoulli, binomial and negative-binomial models use Polya--Gamma augmentation.
 Multiple covariates and unequal observation counts are supported.
 }
 \details{
-Gaussian sampling preserves the original update order, priors and
-  centering. Binary/count families have explicitly specified regression
-  priors and a proper sum-to-zero implementation when \code{center=TRUE}.
+Gaussian fits use the normalized random-effect prior on the sum-zero
+  subspace. The variance update uses rank \eqn{n-1}, and the correlation
+  determinant excludes the global constant eigencomponent. With a flat
+  intercept prior, this preserves the slope and covariance-parameter
+  posterior of the unrestricted proper Leroux model. The stored intercept
+  is \eqn{\beta_0+\bar\theta}, and the stored random effects are
+  \eqn{\theta_i-\bar\theta}; the original intercept marginal is different.
+  Noncentered Gaussian initial random effects are centered while the
+  intercept is shifted to preserve the initial linear predictor.
+  Binary/count families have explicitly specified regression priors and
+  a normalized sum-zero prior when \code{center=TRUE}.
   Their thresholds are not given by the Gaussian replication formulas.
   Use \code{posterior_draws()} or \code{posterior_summary()} to discard the
   initial state and the requested burn-in updates consistently.

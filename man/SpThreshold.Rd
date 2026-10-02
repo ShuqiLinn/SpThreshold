@@ -12,14 +12,14 @@ SpThreshold(mcmc_samples, y, X, loc, model_indicator,
             a_rho_prior = NULL, b_rho_prior = NULL,
             beta_init = NULL, theta_init = NULL,
             sigma2_init = NULL, tau2_init = NULL, rho_init = NULL,
-            burnin = 0, adapt_rho = TRUE)
+            burnin = 0, adapt_rho = TRUE, verbose = TRUE)
 }
 \arguments{
 \item{mcmc_samples}{Integer number of MCMC iterations (including burn-in).}
 
 \item{y}{Length-\eqn{N} numeric vector of outcomes, where \eqn{N = nm}.}
 
-\item{X}{\eqn{N} by \eqn{p} design matrix for the fixed effects, typically containing an intercept column and one or more covariate columns.}
+\item{X}{\eqn{N} by \eqn{p} full-rank design matrix for the fixed effects, containing an intercept column. At least two locations are required.}
 
 \item{loc}{Length-\eqn{N} integer vector identifying the spatial area for each observation, with values in \eqn{0, 1, \ldots, n-1}.}
 
@@ -40,6 +40,7 @@ SpThreshold(mcmc_samples, y, X, loc, model_indicator,
 \item{burnin}{Integer number of initial iterations during which the \eqn{\rho} proposal standard deviation is adapted (if \code{adapt_rho = TRUE}). Should be less than \code{mcmc_samples}.}
 
 \item{adapt_rho}{Logical. If \code{TRUE} (default), the \eqn{\rho} proposal standard deviation is adapted during burn-in using a Robbins-Monro scheme targeting an acceptance rate of \code{0.234}.}
+\item{verbose}{Logical. Print sampling progress.}
 }
 \value{
 A list with components
@@ -52,7 +53,17 @@ A list with components
 \item{\code{final_proposal_sd}}{(Spatial model only.) Final proposal standard deviation after adaptation.}
 }
 \details{
-Full details of the model specification, prior distributions, and MCMC sampling algorithm are given in the \code{SpThreshold_Model_Details} vignette.
+The sampler uses the normalized sum-zero random-effect prior. It draws
+the Gaussian conditional restricted to \eqn{\boldsymbol{1}^\top\boldsymbol{\theta}=0},
+uses rank \eqn{n-1} in the variance update, and excludes the global constant
+eigencomponent from the correlation determinant. With the flat intercept
+prior, slope and covariance-parameter posteriors equal those of the original
+unrestricted proper Leroux model. The stored intercept is
+\eqn{\beta_0+\bar\theta}, and the stored random effects are
+\eqn{\theta_i-\bar\theta}. A noncentered initial random-effect vector is
+centered while its mean is added to the intercept, preserving the linear
+predictor. Results include \code{sampler_version="gaussian_sum_zero_v2"},
+\code{random_effect_rank}, and \code{intercept_parameterization}.
 }
 \seealso{
 \code{\link{m_star}} for the closed-form replication threshold; \code{\link{create_random_W}} and \code{\link{create_W_from_shapefile}} for adjacency matrix construction.

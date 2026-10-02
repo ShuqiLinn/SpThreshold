@@ -18,11 +18,13 @@ Rcpp::List rho_update(int n,
                       double b_rho){
 
 //Current state:  log-posterior evaluated at rho_old.
-//log f(rho | theta, tau2) = 0.5 * log|Q(rho)|
+// Q_log_det values remain full determinants for API compatibility.
+// The centered prior uses log|Q(rho)| - log(1-rho).
+//log f(rho | theta, tau2) = 0.5 * log|Q(rho)|_contrasts
 //                           - 0.5/tau2 * theta^T Q(rho) theta
 //                           + (a_rho - 1)*log(rho) + (b_rho - 1)*log(1 - rho)
 double quad_old = dot(theta, (Q_old*theta));
-double lp_curr = 0.50*Q_log_det_old +
+double lp_curr = 0.50*(Q_log_det_old - log1p(-rho_old)) +
                  -0.50*quad_old/tau2 +
                  (a_rho - 1.00)*log(rho_old) +
                  (b_rho - 1.00)*log(1.00 - rho_old);
@@ -44,7 +46,7 @@ arma::log_det(Q_log_det_prop, sign, Q_prop);
 
 //Proposed-state log-posterior
 double quad_prop = dot(theta, (Q_prop*theta));
-double lp_prop = 0.50*Q_log_det_prop +
+double lp_prop = 0.50*(Q_log_det_prop - log1p(-rho_prop)) +
                  -0.50*quad_prop/tau2 +
                  (a_rho - 1.00)*log(rho_prop) +
                  (b_rho - 1.00)*log(1.00 - rho_prop);
