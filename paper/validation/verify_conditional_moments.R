@@ -1,5 +1,3 @@
-# Numerical verification of the four expressions in Proposition 1.
-
 create_W <- function(n_locs) {
   W <- matrix(0, n_locs, n_locs)
   perm <- sample.int(n_locs)
@@ -12,19 +10,18 @@ create_W <- function(n_locs) {
 }
 
 run_one_check <- function(n, m) {
-  stopifnot(n >= 2, m >= 1, n == as.integer(n), m == as.integer(m))
   N <- n * m
   rho <- runif(1, 0, 0.99)
   sigma2 <- runif(1, 0.05, 0.95)
   tau0_2 <- 1 - sigma2
-  beta0 <- runif(1, 0.5, 2)  # Nonzero intercept checks its cancellation.
+  beta0 <- runif(1, 0.5, 2)
   beta1 <- rnorm(1)
 
   W <- create_W(n)
   L <- diag(rowSums(W)) - W
   eig <- eigen(L, symmetric = TRUE)
   ord <- order(eig$values)
-  lam <- pmax(eig$values[ord], 0)  # Remove roundoff at the zero eigenvalue.
+  lam <- pmax(eig$values[ord], 0)
   U <- eig$vectors[, ord, drop = FALSE]
   q <- rho * lam + 1 - rho
   tau1_2 <- n * tau0_2 / sum(1 / q)
@@ -44,7 +41,6 @@ run_one_check <- function(n, m) {
     rnorm(N, sd = sqrt(sigma2))
   y_bar <- colMeans(matrix(y, nrow = m, ncol = n))
 
-  # Closed forms in Proposition 1.
   x_proj <- drop(crossprod(U, x_bar))
   y_proj <- drop(crossprod(U, y_bar))
   d <- x_proj^2
@@ -62,7 +58,6 @@ run_one_check <- function(n, m) {
   mean_ns_closed <- (xy - m^2 * tau0_2 / denom_ns *
     sum(x_proj * y_proj)) / (sigma2 * prec_ns_closed)
 
-  # Independent matrix calculations, retaining beta0 in the mean formula.
   Omega_sp <- tau1_2 * Z %*% Q_inv %*% t(Z) + sigma2 * diag(N)
   Omega_ns <- tau0_2 * tcrossprod(Z) + sigma2 * diag(N)
 
@@ -94,4 +89,3 @@ n_sims <- 100
 results <- replicate(n_sims, run_one_check(n, m))
 max_errors <- apply(results, 1, max)
 print(max_errors, digits = 4)
-
