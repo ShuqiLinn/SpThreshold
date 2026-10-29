@@ -1,5 +1,4 @@
-# Variance calibration for the proper Leroux model. Public documentation lives
-# in man/variance_calibration.Rd.
+# Variance calibration for the proper Leroux model.
 .threshold_scalar <- function(x, name, lower = 0, upper = Inf,
                               include_lower = FALSE, include_upper = FALSE) {
   if (!is.numeric(x) || length(x) != 1L || !is.finite(x) ||
