@@ -4,3 +4,7 @@
 ^README\.md$
 ^\.git$
 ^\.gitignore$
+^\.gitattributes$
+^paper$
+^SpThreshold_Example$
+^SpThreshold_Model_Details$
