@@ -2,264 +2,392 @@
 output:
   pdf_document: default
 ---
+
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE)
 ```
+
 # SpThreshold: Replication Threshold for Bayesian Multilevel Models of Areal Data
 
 ## Part I: Replication threshold via m_star()
 
-[1] Initialize package and set reproducibility seed:
+[1] Load the package and set the seed:
+
 ```{r}
 library(SpThreshold)
 set.seed(2026)
 ```
 
 [2] Generate a random connected adjacency matrix:
+
 ```{r}
-n<-100  #Number of spatial units
-W<-create_random_W(n_locs = n)
+n <- 100
+W <- create_random_W(n_locs = n)
 ```
 
-[3] Set covariance parameters:
+[3] Set the residual variance, nonspatial random-intercept variance, and spatial correlation. The spatial variance scale is obtained through variance calibration:
 
-* Within-area residual variance, spatial random-effect variance, spatial correlation:
 ```{r}
-sigma2<-0.50
-tau2<-0.50
-rho<-0.70
+sigma2 <- 0.50
+tau_ns_2 <- 0.50
+rho <- 0.70
+
+cal <- variance_calibration(
+  W = W,
+  rho = rho,
+  tau_ns_2 = tau_ns_2
+)
+
+data.frame(
+  tau_ns_2 = cal$tau_ns_2,
+  tau_sp_2 = cal$tau_sp_2
+)
 ```
 
-[4] Compute $m^*$ under three covariate structures:
+[4] Compute the approximate threshold under three covariate structures. Covariates are centered and standardized to population variance one.
 
-* C1: covariate varies only within areas ($\text{Var}(\bar{\text{x}}_{i \cdot}) \approx 0$):
+* C1: Independent covariate values, with most variation within areas:
+
 ```{r}
-m_obs<-20  #Observations per area
-N<-n*m_obs
-loc<-rep(1:n,
-         each = m_obs)
-X_c1<-rnorm(n = N)
-X_c1<-(X_c1 - mean(X_c1))/sqrt(mean((X_c1 - mean(X_c1))^2))  #Standardize
-res_c1<-m_star(W = W,
-               sigma2 = sigma2,
-               tau2 = tau2,
-               rho = rho,
-               X = X_c1,
-               loc = loc)
+m_obs <- 20
+N <- n * m_obs
+loc <- rep(1:n, each = m_obs)
+
+X_c1 <- rnorm(N)
+X_c1 <- (X_c1 - mean(X_c1)) /
+  sqrt(mean((X_c1 - mean(X_c1))^2))
+
+res_c1 <- m_star(
+  W = W,
+  sigma2 = sigma2,
+  rho = rho,
+  tau_ns_2 = tau_ns_2,
+  X = X_c1,
+  loc = loc,
+  method = "approx"
+)
+
 res_c1$m_star
 ```
 
-* C2: covariate varies both within and between areas:
+* C2: Covariate variation both within and between areas:
+
 ```{r}
-loc_means<-rnorm(n = n)
-X_c2<-rnorm(n = N,
-            mean = loc_means[loc],
-            sd = 1.00)
-X_c2<-(X_c2 - mean(X_c2))/sqrt(mean((X_c2 - mean(X_c2))^2))
-res_c2<-m_star(W = W,
-               sigma2 = sigma2,
-               tau2 = tau2,
-               rho = rho,
-               X = X_c2,
-               loc = loc)
+loc_means <- rnorm(n)
+X_c2 <- rnorm(N, mean = loc_means[loc], sd = 1)
+X_c2 <- (X_c2 - mean(X_c2)) /
+  sqrt(mean((X_c2 - mean(X_c2))^2))
+
+res_c2 <- m_star(
+  W = W,
+  sigma2 = sigma2,
+  rho = rho,
+  tau_ns_2 = tau_ns_2,
+  X = X_c2,
+  loc = loc,
+  method = "approx"
+)
+
 res_c2$m_star
 ```
 
-* C3: covariate varies only between areas ($\text{Var}(\text{x}_{ij} \mid i) = 0$, denominator vanishes, bound is infinite):
+* C3: Covariate variation only between areas:
+
 ```{r}
-X_c3<-loc_means[loc]
-X_c3<-(X_c3 - mean(X_c3))/sqrt(mean((X_c3 - mean(X_c3))^2))
-res_c3<-m_star(W = W,
-               sigma2 = sigma2,
-               tau2 = tau2,
-               rho = rho,
-               X = X_c3,
-               loc = loc)
+X_c3 <- loc_means[loc]
+X_c3 <- (X_c3 - mean(X_c3)) /
+  sqrt(mean((X_c3 - mean(X_c3))^2))
+
+res_c3 <- m_star(
+  W = W,
+  sigma2 = sigma2,
+  rho = rho,
+  tau_ns_2 = tau_ns_2,
+  X = X_c3,
+  loc = loc,
+  method = "approx"
+)
+
 res_c3$m_star
 ```
 
-[5] Vary $\rho$ under C2:
+[5] Compare the approximate and exact thresholds under C2. The exact threshold identifies the replication level at which the full conditional variance difference remains within tolerance for every larger sample size:
+
 ```{r}
-rho_seq<-c(0.05, 0.25, 0.50, 0.75, 0.95)
-m_star_rho<-sapply(rho_seq,
-                   function(r) m_star(W = W,
-                                      sigma2 = 0.50,
-                                      tau2 = 0.50,
-                                      rho = r,
-                                      X = X_c2,
-                                      loc = loc)$m_star)
-data.frame(rho = rho_seq,
-           m_star = m_star_rho)
+res_c2_exact <- m_star(
+  W = W,
+  sigma2 = sigma2,
+  rho = rho,
+  tau_ns_2 = tau_ns_2,
+  X = X_c2,
+  loc = loc,
+  method = "exact"
+)
+
+data.frame(
+  m_approx = res_c2_exact$m_approx,
+  m_exact = res_c2_exact$m_exact
+)
 ```
 
-[6] Vary $\kappa = \tau^2 / \sigma^2$ under C2:
+[6] Vary $\rho$ under C2, holding $\tau_{\mathrm{ns}}^2$ and $\sigma^2$ fixed:
+
 ```{r}
-k_seq<-c(0.05/0.95, 0.50/0.50, 0.95/0.05)
-m_star_k<-sapply(k_seq,
-                 function(k){
-                    tau2_k<-k/(1.00 + k)
-                    sigma2_k<-1.00/(1.00 + k)
-                    m_star(W = W,
-                           sigma2 = sigma2_k,
-                           tau2 = tau2_k,
-                           rho = 0.70,
-                           X = X_c2,
-                           loc = loc)$m_star
-                    })
-data.frame(k = round(k_seq, 3),
-           m_star = m_star_k)
+rho_seq <- c(0.05, 0.25, 0.50, 0.75, 0.95)
+
+m_star_rho <- sapply(rho_seq, function(r) {
+  m_star(
+    W = W,
+    sigma2 = sigma2,
+    rho = r,
+    tau_ns_2 = tau_ns_2,
+    X = X_c2,
+    loc = loc
+  )$m_star
+})
+
+data.frame(
+  rho = rho_seq,
+  m_approx = m_star_rho
+)
 ```
 
-[7] Construct $W$ from a shapefile:
+[7] Vary $\kappa=\tau_{\mathrm{ns}}^2/\sigma^2$ under C2:
+
+```{r}
+k_seq <- c(0.05 / 0.95, 0.50 / 0.50, 0.95 / 0.05)
+
+m_star_k <- sapply(k_seq, function(k) {
+  m_star(
+    W = W,
+    sigma2 = 1 / (1 + k),
+    rho = rho,
+    tau_ns_2 = k / (1 + k),
+    X = X_c2,
+    loc = loc
+  )$m_star
+})
+
+data.frame(
+  kappa = k_seq,
+  m_approx = m_star_k
+)
+```
+
+[8] Vary the tolerance $\gamma$ under C2:
+
+```{r}
+gamma_seq <- c(0.01, 0.05, 0.10, 0.20)
+
+m_star_gamma <- sapply(gamma_seq, function(g) {
+  m_star(
+    W = W,
+    sigma2 = sigma2,
+    rho = rho,
+    tau_ns_2 = tau_ns_2,
+    X = X_c2,
+    loc = loc,
+    gamma = g
+  )$m_star
+})
+
+data.frame(
+  gamma = gamma_seq,
+  m_approx = m_star_gamma
+)
+```
+
+[9] An adjacency matrix can also be constructed from a shapefile. This example uses the North Carolina shapefile included in `sf` and requires the `sf` and `spdep` packages:
 
 ```{r}
 library(sf)
 
-# please replace with the path to your own shapefile; 
-# here we use the example shapefile bundled with sf
 shp_path <- system.file("shape/nc.shp", package = "sf")
 polygons <- st_read(shp_path, quiet = TRUE)
+W_nc <- create_W_from_shapefile(polygons)
 
-W_nc <- create_W_from_shapefile(polygons = polygons)
+dim(W_nc)
 ```
-
-[8] Vary the tolerance $\gamma$ under C2:
-```{r}
-gamma_seq<-c(0.01, 0.05, 0.10, 0.20)
-m_star_gamma<-sapply(gamma_seq,
-                     function(g) m_star(W = W,
-                                        sigma2 = 0.50,
-                                        tau2 = 0.50,
-                                        rho = 0.70,
-                                        X = X_c2,
-                                        loc = loc,
-                                        gamma = g)$m_star)
-data.frame(gamma = gamma_seq,
-           m_star = m_star_gamma)
-```
-
 
 ## Part II: Model fitting via spfit()
 
-`spfit()` fits the multilevel model from the manuscript via MCMC, with either a Leroux CAR prior (`model_indicator = 1`) or an iid prior (`model_indicator = 0`) on the area-level random effects. The C++ implementation has been verified to target the same posterior as the R reference to within Monte Carlo error.
+The function `spfit()` fits spatial or nonspatial multilevel models using MCMC.
 
-[1] Generate a small synthetic dataset. We use a C2-style covariate (within- and between-area variation) here for better illustration.
+[1] Generate a Gaussian dataset with covariate variation within and between areas:
+
 ```{r}
 set.seed(2026)
-n_locs<-50
-m_per<-10
-N<-n_locs*m_per
 
-W_small<-as.matrix(create_random_W(n_locs))
-loc_small<-rep(1:n_locs, each = m_per)
+n_locs <- 50
+m_per <- 10
+N <- n_locs * m_per
 
-beta_true<-c(0.50, 1.50)
-sigma2_true<-0.50
-tau2_true<-0.50
-rho_true<-0.50
+W_small <- create_random_W(n_locs)
+loc_small <- rep(1:n_locs, each = m_per)
 
-D<-diag(rowSums(W_small))
-Q_true<-rho_true*(D - W_small) + (1.00 - rho_true)*diag(n_locs)
-theta_true<-as.numeric(t(chol(solve(Q_true)*tau2_true)) %*% rnorm(n_locs))
-theta_true<-theta_true - mean(theta_true)
+beta_true <- c(0.50, 1.50)
+sigma2_true <- 0.50
+tau_sp_2_true <- 0.50
+rho_true <- 0.50
 
-loc_means_x<-rnorm(n_locs)
-x_small<-rnorm(N, mean = loc_means_x[loc_small], sd = 1.00)
-x_small<-(x_small - mean(x_small))/sqrt(mean((x_small - mean(x_small))^2))
-X_small<-cbind(1, x_small)
-y_small<-as.numeric(X_small %*% beta_true + theta_true[loc_small]) +
-         rnorm(N, 0, sqrt(sigma2_true))
+D <- diag(rowSums(W_small))
+Q_true <- rho_true * (D - W_small) +
+  (1 - rho_true) * diag(n_locs)
+
+theta_true <- as.numeric(
+  t(chol(tau_sp_2_true * solve(Q_true))) %*% rnorm(n_locs)
+)
+theta_true <- theta_true - mean(theta_true)
+
+loc_means_x <- rnorm(n_locs)
+x_small <- rnorm(N, mean = loc_means_x[loc_small], sd = 1)
+x_small <- (x_small - mean(x_small)) /
+  sqrt(mean((x_small - mean(x_small))^2))
+
+X_small <- cbind(1, x_small)
+colnames(X_small) <- c("(Intercept)", "x")
+
+y_small <- as.numeric(
+  X_small %*% beta_true + theta_true[loc_small]
+) + rnorm(N, sd = sqrt(sigma2_true))
 ```
 
 [2] Fit the spatial model:
+
 ```{r}
-fit_sp<-spfit(y = y_small,
-              X = X_small,
-              loc = loc_small,
-              W = W_small,
-              model_indicator = 1,
-              mcmc_samples = 15000,
-              burnin = 5000)
+fit_sp <- spfit(
+  y = y_small,
+  X = X_small,
+  loc = loc_small,
+  W = W_small,
+  model_indicator = 1,
+  mcmc_samples = 15000,
+  burnin = 5000
+)
 ```
 
-[3] Discard burn-in and summarize the posterior:
+[3] Summarize the posterior after burn-in:
+
 ```{r}
-keep<-5001:15000
-data.frame(parameter = c("beta0", "beta1", "sigma2", "tau2", "rho"),
-           truth = c(beta_true, sigma2_true, tau2_true, rho_true),
-           posterior_mean = c(mean(fit_sp$beta[1, keep]),
-                              mean(fit_sp$beta[2, keep]),
-                              mean(fit_sp$sigma2[keep]),
-                              mean(fit_sp$tau2[keep]),
-                              mean(fit_sp$rho[keep])),
-           posterior_sd = c(sd(fit_sp$beta[1, keep]),
-                            sd(fit_sp$beta[2, keep]),
-                            sd(fit_sp$sigma2[keep]),
-                            sd(fit_sp$tau2[keep]),
-                            sd(fit_sp$rho[keep])))
+summary_sp <- posterior_summary(fit_sp)
+
+summary_sp[, c(
+  "parameter", "mean", "median", "variance", "lower", "upper"
+)]
 ```
 
-[4] Fit the nonspatial model on the same data:
+[4] Fit the nonspatial model to the same data:
+
 ```{r}
-fit_ns<-spfit(y = y_small,
-              X = X_small,
-              loc = loc_small,
-              W = W_small,
-              model_indicator = 0,
-              mcmc_samples = 15000,
-              burnin = 5000)
+fit_ns <- spfit(
+  y = y_small,
+  X = X_small,
+  loc = loc_small,
+  W = W_small,
+  model_indicator = 0,
+  mcmc_samples = 15000,
+  burnin = 5000
+)
+
+summary_ns <- posterior_summary(fit_ns)
+
+summary_ns[, c(
+  "parameter", "mean", "median", "variance", "lower", "upper"
+)]
 ```
 
-[5] Compare the two models. The manuscript bounds the relative difference in posterior variance of $\beta_1$: when $m \geq m^*$, this relative difference is below $\gamma$. Compute the relative difference here and confirm:
-```{r}
-var_sp<-var(fit_sp$beta[2, keep])
-var_ns<-var(fit_ns$beta[2, keep])
-rel_diff<-abs(var_sp - var_ns)/var_ns
+[5] Compare the marginal posterior variances of the covariate coefficient using the retained MCMC draws:
 
-data.frame(var_sp = var_sp,
-           var_ns = var_ns,
-           rel_diff = rel_diff,
-           gamma = 0.05,
-           within_threshold = rel_diff < 0.05)
+```{r}
+draws_sp <- posterior_draws(fit_sp)
+draws_ns <- posterior_draws(fit_ns)
+
+var_sp <- var(draws_sp$x)
+var_ns <- var(draws_ns$x)
+rel_diff <- abs(var_sp - var_ns) / var_ns
+
+data.frame(
+  variance_spatial = var_sp,
+  variance_nonspatial = var_ns,
+  relative_difference = rel_diff,
+  gamma = 0.05,
+  within_tolerance = rel_diff <= 0.05
+)
 ```
 
-[6] Connect the two parts: compute $m^*$ from the formula in Section 3.2 of the manuscript. By construction, when $m \geq m^*$, the relative difference in posterior variance of $\beta_1$ is below $\gamma$ — which is what we just verified empirically in step [5].
+[6] Compute the approximate and exact thresholds using the generating spatial covariance parameters and the calibrated nonspatial variance. These thresholds describe the full conditional variance comparison at fixed covariance parameters:
+
 ```{r}
-xbar_small<-as.numeric(tapply(x_small, loc_small, mean))
-res<-m_star(W = W_small,
-            sigma2 = sigma2_true,
-            tau2 = tau2_true,
-            rho = rho_true,
-            X = x_small,
-            loc = loc_small)
-data.frame(m_star = res$m_star,
-           m_actual = m_per,
-           sufficient = m_per >= res$m_star)
+res <- m_star(
+  W = W_small,
+  sigma2 = sigma2_true,
+  rho = rho_true,
+  tau_sp_2 = tau_sp_2_true,
+  X = x_small,
+  loc = loc_small,
+  method = "exact"
+)
+
+data.frame(
+  m_actual = m_per,
+  m_approx = res$m_approx,
+  m_exact = res$m_exact
+)
 ```
 
-[7] The data frame interface is also supported and produces identical output. Below uses the same data via a data frame:
+[7] The data-frame and matrix interfaces give the same coefficient draws when supplied with the same data and random seed:
+
 ```{r}
-df_small<-data.frame(y = y_small, x = x_small, area = loc_small)
+df_small <- data.frame(
+  y = y_small,
+  x = x_small,
+  area = loc_small
+)
 
 set.seed(7)
-fit_df<-spfit(data = df_small,
-              formula = y ~ x,
-              area = "area",
-              W = W_small,
-              model_indicator = 1,
-              mcmc_samples = 15000,
-              burnin = 5000)
+fit_df <- spfit(
+  data = df_small,
+  formula = y ~ x,
+  area = "area",
+  W = W_small,
+  model_indicator = 1,
+  mcmc_samples = 15000,
+  burnin = 5000
+)
 
 set.seed(7)
-fit_vec<-spfit(y = y_small,
-               X = X_small,
-               loc = loc_small,
-               W = W_small,
-               model_indicator = 1,
-               mcmc_samples = 15000,
-               burnin = 5000)
+fit_vec <- spfit(
+  y = y_small,
+  X = X_small,
+  loc = loc_small,
+  W = W_small,
+  model_indicator = 1,
+  mcmc_samples = 15000,
+  burnin = 5000
+)
 
 identical(fit_df$beta, fit_vec$beta)
 ```
 
+## Part III: Two-stage procedure
 
+Apply the two-stage procedure to the same dataset, treating the covariance parameters as unknown.
+
+[1] Estimate the covariance parameters:
+
+```{r}
+two_stage <- two_stage_estimate(
+  y = y_small,
+  X = X_small,
+  loc = loc_small,
+  W = W_small
+)
+
+two_stage$estimates
+```
+
+[2] Examine the full conditional variance comparison at the observed design:
+
+```{r}
+two_stage$conditional_variances
+```

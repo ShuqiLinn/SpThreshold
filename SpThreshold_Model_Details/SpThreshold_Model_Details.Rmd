@@ -2,95 +2,218 @@
 output:
   pdf_document: default
 ---
+
 # SpThreshold: Replication Threshold for Bayesian Multilevel Models of Areal Data
 
 ## Statistical Model
-$$Y_{ij} = \beta_0 + \beta_1 \text{x}_{ij} + \theta_i + \varepsilon_{ij},\ i=1,...,n;\ j=1,...,m;$$
 
-* $n$:  Number of spatial areas (e.g., counties, census tracts);
+$$
+Y_{ij}=\beta_0+\sum_{k=1}^{p}\beta_k\text{x}_{kij}+\theta_i+\varepsilon_{ij},
+\quad i=1,\ldots,n;\ j=1,\ldots,m_i.
+$$
 
-* $m$:  Number of observations within each spatial area (balanced replication assumed);
+* $n$: Number of spatial areas (e.g., counties, census tracts);
 
-* $\text{x}_{ij}$:  Covariate value for observation $j$ in area $i$;
+* $m_i$: Number of observations within area $i$;
 
-* $\theta_i$:  Area-specific random effect;
+* $p$: Number of covariates;
 
-* $\varepsilon_{ij}$:  Observation-level residual error.
+* $\text{x}_{kij}$: Value of covariate $k$ for observation $j$ in area $i$;
 
-$$\varepsilon_{ij} | \sigma^2 \stackrel{\text{iid}}{\sim} \text{N}\left(0, \sigma^2\right).$$
+* $\theta_i$: Random intercept shared by observations in area $i$;
 
-$$\theta_i | \boldsymbol{\theta}_{-i}, \tau^2, \rho \stackrel{\text{ind}}{\sim} \text{N}\left(\frac{\rho \sum_{i'=1}^{n} \text{w}_{ii'}\theta_{i'}}{\rho \sum_{i'=1}^{n} \text{w}_{ii'} + 1 - \rho}, \frac{\tau^2}{\rho \sum_{i'=1}^{n} \text{w}_{ii'} + 1 - \rho}\right),\ i=1,...,n;$$
+* $\varepsilon_{ij}$: Observation-level residual error.
 
-* $\boldsymbol{\theta}_{-i}^{\text{T}} = \left(\theta_1, ..., \theta_{i-1}, \theta_{i+1}, ..., \theta_n\right)$;
+$$
+\varepsilon_{ij}\mid\sigma^2
+\stackrel{\mathrm{iid}}{\sim}\text{N}(0,\sigma^2).
+$$
 
-* $\text{w}_{ii'}$:  Equal to one if areas $i$ and $i'$ are neighbors, zero otherwise.  $\text{w}_{ii} = 0$ by definition;
+For the spatial model,
+$$
+\theta_i\mid\boldsymbol{\theta}_{-i},\tau_{\mathrm{sp}}^2,\rho
+\sim
+\text{N}\left(
+\frac{\rho\sum_{i'=1}^{n}\text{w}_{ii'}\theta_{i'}}
+{\rho\sum_{i'=1}^{n}\text{w}_{ii'}+1-\rho},
+\frac{\tau_{\mathrm{sp}}^2}
+{\rho\sum_{i'=1}^{n}\text{w}_{ii'}+1-\rho}
+\right).
+$$
 
-* Equivalent joint form: $\boldsymbol{\theta}|\tau^2,\rho \sim \text{N}\left(\boldsymbol{0}_n, \tau^2 Q(\rho)^{-1}\right)$ where $Q(\rho) = \rho\text{L} + \left(1-\rho\right)I_n$ and $\text{L} = \text{diag}(\text{w}_{1\cdot},...,\text{w}_{n\cdot}) - \text{W}$ is the graph Laplacian.
+* $\boldsymbol{\theta}_{-i}^{\mathrm{T}}=(\theta_1,\ldots,\theta_{i-1},\theta_{i+1},\ldots,\theta_n)$;
+
+* $\text{w}_{ii'}$: Equal to one if areas $i$ and $i'$ are neighbors, zero otherwise; $\text{w}_{ii}=0$;
+
+* $\rho$: Spatial correlation parameter, with $0\leq\rho<1$;
+
+* Equivalent joint form:
+  $\boldsymbol{\theta}\mid\tau_{\mathrm{sp}}^2,\rho
+  \sim\text{N}_n(\boldsymbol{0}_n,\tau_{\mathrm{sp}}^2Q(\rho)^{-1})$,
+  where $Q(\rho)=\rho\text{L}+(1-\rho)I_n$ and
+  $\text{L}=\operatorname{diag}(\text{w}_{1\cdot},\ldots,\text{w}_{n\cdot})-\text{W}$
+  is the graph Laplacian.
+
+For the nonspatial model,
+$$
+\theta_i\mid\tau_{\mathrm{ns}}^2
+\stackrel{\mathrm{iid}}{\sim}\text{N}(0,\tau_{\mathrm{ns}}^2).
+$$
+
+The random intercepts and residual errors are independent of the covariates and of each other.
 
 ## Prior Information
-$f\left(\beta_0\right), f\left(\beta_1\right) \propto 1;$
 
-$\sigma^2 \sim \text{Inverse Gamma}\left(a_{\sigma^2}, b_{\sigma^2}\right);$
+$f(\beta_k)\propto1,\quad k=0,\ldots,p;$
 
-* Default setting: $a_{\sigma^2} = 0.01$, $b_{\sigma^2} = 0.01.$
+$\sigma^2\sim\text{Inverse Gamma}(a_{\sigma^2},b_{\sigma^2});$
 
-$\tau^2 \sim \text{Inverse Gamma}\left(a_{\tau^2}, b_{\tau^2}\right);$
+* Default setting: $a_{\sigma^2}=0.01$, $b_{\sigma^2}=0.01$.
 
-* Default setting: $a_{\tau^2} = 0.01$, $b_{\tau^2} = 0.01.$
+The random-intercept variance has the following prior under the corresponding model:
 
-$\rho \sim \text{Uniform}\left(a_{\rho}, b_{\rho}\right);$
+$\tau_{\mathrm{ns}}^2\sim\text{Inverse Gamma}(a_{\tau^2},b_{\tau^2});$
 
-* Default setting: $a_{\rho} = 0.00$, $b_{\rho} = 1.00.$
+$\tau_{\mathrm{sp}}^2\sim\text{Inverse Gamma}(a_{\tau^2},b_{\tau^2});$
+
+* Default setting: $a_{\tau^2}=0.01$, $b_{\tau^2}=0.01$.
+
+Inverse-gamma priors use shape $a$ and scale $b$, with density proportional to $t^{-a-1}\exp(-b/t)$.
+
+For the spatial model,
+
+$\rho\sim\text{Beta}(a_\rho,b_\rho);$
+
+* Default setting: $a_\rho=b_\rho=1$, giving a uniform prior on $(0,1)$.
 
 ## Default Initial Values
-* $\beta_0 = \beta_1 = 0$;
 
-* $\theta_i = 0$ for all $i$;
+* $\beta_k=0$ for $k=0,\ldots,p$;
 
-* $\sigma^2 = 1.00$;
+* $\theta_i=0$ for all $i$;
 
-* $\tau^2 = 1.00$;
+* $\sigma^2=1.00$;
 
-* $\rho = 0.50.$
+* $\tau_{\mathrm{ns}}^2=1.00$ or $\tau_{\mathrm{sp}}^2=1.00$, according to the selected model;
+
+* $\rho=0.50$ for the spatial model.
 
 ## Model Indicator
-* model_indicator $= 0$: Nonspatial:  
-  +  $\rho \equiv 0$, so $\theta_i|\tau^2 \stackrel{\text{iid}}{\sim} \text{N}\left(0, \tau^2\right);$
 
-* model_indicator $= 1$: Spatial:  
-  +  Full Leroux conditional autoregressive prior on $\boldsymbol{\theta}$.
+* `model_indicator = 0`: Nonspatial model with independent Gaussian random intercepts;
+
+* `model_indicator = 1`: Spatial model with a Leroux conditional autoregressive prior.
 
 ## MCMC Sampling
-Posterior sampling proceeds by iterating through the full conditional distributions of each parameter in the following order within each iteration:
 
-1. $\boldsymbol{\beta} = \left(\beta_0, \beta_1\right)^{\text{T}}$ (Gibbs);
+For Gaussian outcomes, posterior sampling proceeds in the following order within each iteration:
+
+1. $\boldsymbol{\beta}=(\beta_0,\ldots,\beta_p)^{\mathrm{T}}$ (Gibbs);
 
 2. $\boldsymbol{\theta}$ (Gibbs);
 
-3. $\tau^2$ (Gibbs);
+3. $\tau_{\mathrm{ns}}^2$ or $\tau_{\mathrm{sp}}^2$ (Gibbs);
 
 4. $\sigma^2$ (Gibbs);
 
-5. $\rho$ (Metropolis step with a random-walk proposal on the logit scale, adaptive proposal standard deviation during burn-in targeting an acceptance rate of $0.234$).
+5. $\rho$ for the spatial model (Metropolis step with a random-walk proposal on the logit scale).
 
-Derivations of the full conditional distributions are provided in the supplementary material of the manuscript.
+The proposal standard deviation for $\rho$ is adapted during burn-in, targeting an acceptance rate of $0.234$, and held fixed thereafter.
+
+Random intercepts are represented with zero sum, with their mean absorbed into the intercept. Under the flat intercept prior, this preserves the slope and covariance parameter posteriors of the unrestricted model.
+
+Derivations of the full conditional distributions are provided in the Supplementary Material. The function `posterior_summary()` provides posterior means, medians, variances, and credible intervals.
+
+## Variance Calibration
+
+For variance comparisons, the default calibration matches the average marginal random-intercept variance between the two models:
+$$
+\tau_{\mathrm{ns}}^2
+=
+\frac{\tau_{\mathrm{sp}}^2}{n}
+\operatorname{tr}\{Q(\rho)^{-1}\}
+=
+\frac{\tau_{\mathrm{sp}}^2}{n}
+\sum_{i=1}^{n}\frac{1}{1-\rho+\rho\lambda_i},
+$$
+where $\lambda_i$ are the eigenvalues of $\text{L}$.
+
+* Supply `tau_ns_2` to calculate the corresponding spatial scale `tau_sp_2`;
+
+* Supply `tau_sp_2` to calculate the corresponding nonspatial variance `tau_ns_2`;
+
+* If both are supplied, their values are used as given.
+
+This calculation is provided by `variance_calibration()`.
 
 ## Replication Threshold $m^*$
-The package function `m_star()` computes the closed-form replication threshold derived in Section 3 of the manuscript:
 
-$$m^* = \max\left\{2, \left\lceil \frac{\sigma^2 \rho \left|\sum_{i=1}^{n} d_i^2 \left(1 - \lambda_i\right)\right|}{\gamma \tau^2 \left(n - \sum_{i=1}^{n} d_i^2\right)} \right\rceil\right\};$$
+For Gaussian outcomes, `m_star()` computes approximate and exact replication thresholds based on full conditional coefficient variances. These variances integrate out the random intercepts and condition on the covariance parameters and remaining regression coefficients.
 
-* $\lambda_1 < \lambda_2 \leq ... \leq \lambda_n$:  Eigenvalues of the graph Laplacian $\text{L}$, with corresponding orthonormal eigenvectors $\textbf{u}_1, ..., \textbf{u}_n$;
+Under balanced replication with $m$ observations per area, the approximate threshold for a centered, population-standardized covariate is
+$$
+m_{\mathrm{approx}}^*
+=
+\max\left\{
+2,
+\left\lceil
+\frac{
+\sigma^2
+\left|
+\sum_{i=1}^{n}d_i
+\left\{
+\frac{1}{\tau_{\mathrm{ns}}^2}
+-
+\frac{1-\rho+\rho\lambda_i}{\tau_{\mathrm{sp}}^2}
+\right\}
+\right|
+}{
+\gamma\left(n-\sum_{i=1}^{n}d_i\right)
+}
+\right\rceil
+\right\}.
+$$
 
-* $d_i = \sum_{i'=1}^{n} \bar{\text{x}}_{i'\cdot} \text{u}_{ii'}$:  Projection of the area-level covariate means onto the $i$-th eigenvector of $\text{L}$;
+* $\lambda_i$: Eigenvalues of the graph Laplacian $\text{L}$, with corresponding orthonormal eigenvectors $\boldsymbol{u}_i$;
 
-* $\bar{\text{x}}_{i\cdot} = m^{-1} \sum_{j=1}^{m} \text{x}_{ij}$:  Area-level sample mean of the covariate, with the full covariate vector centered and standardized to population mean zero and variance one;
+* $d_i=(\boldsymbol{u}_i^{\mathrm{T}}\bar{\boldsymbol{x}})^2$: Squared projection of the covariate's area means onto the $i$th eigenvector;
 
-* $\gamma$:  Tolerance for the maximum acceptable relative difference in posterior variance between the spatial and nonspatial models.  Default setting: $\gamma = 0.05$.
+* $\bar{\boldsymbol{x}}=(\bar{\text{x}}_1,\ldots,\bar{\text{x}}_n)^{\mathrm{T}}$, where $\bar{\text{x}}_i=m^{-1}\sum_{j=1}^{m}\text{x}_{ij}$;
 
-When $m > m^*$, the relative difference in the marginal posterior variance of $\beta_1$ between the spatial and nonspatial models falls below $\gamma$, and the two models yield effectively equivalent inference for $\beta_1$.
+* The covariate is centered and standardized to population variance one, with positive within-area variation so that $n-\sum_i d_i>0$;
 
-The derivation of $m^*$ proceeds by: (i) marginalizing $\boldsymbol{\theta}$ from the model; (ii) applying the spectral decomposition of $\text{L}$ and the Woodbury matrix identity to obtain a reduced-form expression for the marginal posterior variance of $\beta_1$; and (iii) expanding the resulting expression in powers of $m$ to isolate the leading $O(m^{-1})$ term of the relative difference between the two models.  Full details are given in Section 3 of the manuscript.
+* $\gamma$: Tolerance on the absolute relative variance difference, using the nonspatial variance as the denominator. Default setting: $\gamma=0.05$.
+
+The approximation follows from the leading $O(m^{-1})$ term of the relative variance difference and is calculated with `method = "approx"`.
+
+The exact threshold is the smallest integer $m\geq2$ for which the tolerance holds at every larger integer sample size. It is calculated with `method = "exact"`, using the exact variance expressions and a finite-sample bound to limit the numerical search. The calculations hold the covariate's area means and within-area variation per replicate fixed as $m$ varies.
+
+With multiple covariates, the comparison applies separately to each coefficient conditional on the others. The function `variance_comparison()` evaluates the full conditional variances at an observed design, including unequal replication.
+
+## Two-Stage Procedure
+
+The function `two_stage_estimate()` applies the criterion when covariance parameters are unknown:
+
+1. Fit a nonspatial random-intercept model by restricted maximum likelihood to estimate $\sigma^2$ and $\tau_{\mathrm{ns}}^2$;
+
+2. Estimate $\rho$ using a Gaussian working likelihood for the predicted random intercepts, accounting for shrinkage, observation noise, and fixed-effect estimation, and obtain $\tau_{\mathrm{sp}}^2$ through variance calibration.
+
+The function returns the covariance parameter estimates and full conditional variance comparisons for each predictor at the observed design.
+
+## Non-Gaussian Outcomes
+
+The package also fits the following models using Pólya–Gamma augmentation:
+
+* Bernoulli: Logit link;
+
+* Binomial: Logit link, with the number of trials supplied through `trials`;
+
+* Negative binomial: Log link, with fixed positive integer size $r$ supplied through `nb_size`. For conditional mean $\mu_{ij}$, the conditional variance is $\mu_{ij}+\mu_{ij}^2/r$.
+
+Regression coefficients have independent $\text{N}(0,10^2)$ priors by default. Prior means and standard deviations are specified through `beta_prior_mean` and `beta_prior_sd`.
+
+The argument `center` determines whether the random intercepts are constrained to sum to zero; its default is `TRUE`.
 
 ## Reference
-Lin, S. and Warren, J. L. (2026+).  On the Need for Spatial Random Effects in Bayesian Regression Models for Multilevel Areal Data.
+
+Lin, S. and Warren, J. L. (2026+). On the Need for Spatial Random Effects in Bayesian Regression Models for Multilevel Areal Data.
