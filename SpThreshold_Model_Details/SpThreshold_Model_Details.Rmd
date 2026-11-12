@@ -212,8 +212,6 @@ The package also fits the following models using Pólya–Gamma augmentation:
 
 Regression coefficients have independent $\text{N}(0,10^2)$ priors by default. Prior means and standard deviations are specified through `beta_prior_mean` and `beta_prior_sd`.
 
-The argument `center` determines whether the random intercepts are constrained to sum to zero; its default is `TRUE`.
-
 ## Reference
 
 Lin, S. and Warren, J. L. (2026+). On the Need for Spatial Random Effects in Bayesian Regression Models for Multilevel Areal Data.

@@ -1,18 +1,22 @@
 # Paper replication code
 
-Code accompanying:
+Code and results accompanying:
 
 > Lin, S. and Warren, J. L. (2026+). On the Need for Spatial Random Effects in Bayesian Regression Models for Multilevel Areal Data.
 
 ## Contents
 
-`validation/empirical_validation.R` — numerical verification that the closed-form precision expressions (Section 3.1) and the asymptotic threshold (Section 3.2) agree with direct matrix-algebra computations of the same quantities.
+- `validation/empirical_validation.R` — numerical checks of the Gaussian full conditional precision expressions and approximate replication threshold in Section 3, using direct matrix calculations.
+- `figures/simulation_results.rds` — aggregated simulation results used to produce the figures.
+- `figures/plotting_code.R` — plotting code for the simulation figures in the main text and Supplementary Material.
 
-`figures/plotting_code.R` — script that generates the simulation figures in Sections 4 and the supplement. Reads `figures/simulation_results.rds` (aggregated simulation output) and writes six PNG files into the working directory. Run from inside `figures/`:
+## Reproducing the figures
+
+From the `paper/` directory, run:
 
 ```r
 setwd("figures")
 source("plotting_code.R")
 ```
 
-The methods themselves are implemented in the parent package. See `?SpThreshold::m_star` for the closed-form bound and `?SpThreshold::spfit` for fitting the spatial and nonspatial multilevel models via MCMC.
+The script reads `simulation_results.rds` and saves the generated figures in the working directory.
