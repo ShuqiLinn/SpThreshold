@@ -19,8 +19,8 @@
 #'   Draws are not discarded internally. See \code{\link{posterior_draws}}.
 #' @param adapt_rho Adapt the logit-scale rho proposal during burn-in.
 #' @param a_sigma2_prior,b_sigma2_prior Gaussian residual inverse-gamma shape
-#'   and rate parameters. NULL uses 0.01.
-#' @param a_tau2_prior,b_tau2_prior Random-effect inverse-gamma shape and rate.
+#'   and scale parameters. NULL uses 0.01.
+#' @param a_tau2_prior,b_tau2_prior Random-effect inverse-gamma shape and scale
 #'   NULL uses 0.01.
 #' @param a_rho_prior,b_rho_prior Beta prior parameters for rho. NULL uses one.
 #' @param beta_init,theta_init,sigma2_init,tau2_init,rho_init Starting values.

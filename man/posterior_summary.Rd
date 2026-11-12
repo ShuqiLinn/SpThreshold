@@ -3,7 +3,7 @@
 \name{posterior_summary}
 \alias{posterior_summary}
 \alias{summary.spfit}
-\title{Summarize the marginal posterior from MCMC draws}
+\title{Summarize posterior draws}
 \usage{
 posterior_summary(
   fit,
@@ -16,21 +16,26 @@ posterior_summary(
 \method{summary}{spfit}(object, ...)
 }
 \arguments{
-\item{fit, burnin, thin, include_theta}{See \code{\link{posterior_draws}}.}
+\item{fit}{A fit returned by \code{spfit} or \code{spfit_glmm}.}
 
-\item{probs}{Two quantile probabilities for lower and upper summaries.}
+\item{burnin}{Number of sampling updates to discard. Defaults to the
+burn-in stored in \code{fit}, or zero if unavailable.}
+
+\item{thin}{Retain every \code{thin}th update after burn-in.}
+
+\item{include_theta}{Include random-intercept draws.}
+
+\item{probs}{Probabilities for the lower and upper credible interval limits.}
 
 \item{object}{A fitted model.}
 
-\item{...}{Passed to \code{posterior_summary}.}
+\item{...}{Arguments passed to \code{posterior_summary}.}
 }
 \value{
-A data frame with parameter, mean, variance, sd, lower, upper,
-  n_draws, ess, and mcse_mean. ESS uses an initial-positive, monotone paired
-  autocorrelation estimate within this chain; it is not a multi-chain
-  convergence diagnostic. Undefined ESS is NA for constant draws.
+A data frame with posterior means, medians, variances, standard
+  deviations, interval limits, draw counts, effective sample sizes,
+  and Monte Carlo standard errors of the means.
 }
 \description{
-Computes sample means, sample variances and quantiles of the retained draws.
-No conditional plug-in approximation or Rao--Blackwellization is applied.
+Summarize posterior draws
 }

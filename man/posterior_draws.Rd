@@ -2,26 +2,23 @@
 % Please edit documentation in R/posterior.R
 \name{posterior_draws}
 \alias{posterior_draws}
-\title{Extract retained posterior draws}
+\title{Extract posterior draws}
 \usage{
 posterior_draws(fit, burnin = NULL, thin = 1L, include_theta = FALSE)
 }
 \arguments{
 \item{fit}{A fit returned by \code{spfit} or \code{spfit_glmm}.}
 
-\item{burnin}{Number of initial updates to discard. NULL uses the fit metadata,
-or zero for an older fit without metadata.}
+\item{burnin}{Number of sampling updates to discard. Defaults to the
+burn-in stored in \code{fit}, or zero if unavailable.}
 
-\item{thin}{Retain every thin-th update after burn-in.}
+\item{thin}{Retain every \code{thin}th update after burn-in.}
 
-\item{include_theta}{Include columns for the random effects.}
+\item{include_theta}{Include random-intercept draws.}
 }
 \value{
-A data frame with one row per retained draw. Attributes \code{updates},
-  \code{burnin}, and \code{thin} describe the retained update numbers.
+A data frame with one row per retained draw.
 }
 \description{
-The package stores the initial state in column one. This function discards
-that state and the requested number of sampling updates, then thins by update
-number. For example, burnin=20 and thin=2 retains updates 22, 24, and so on.
+Extract posterior draws
 }

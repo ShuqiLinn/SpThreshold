@@ -1,48 +1,88 @@
 \name{m_star}
 \alias{m_star}
-\title{Leading-Order and Exact Integer Replication Thresholds}
+\title{Approximate and Exact Replication Thresholds}
+
 \usage{
-m_star(W, sigma2, tau2 = NULL, rho, xbar = NULL, X = NULL,
-  loc = NULL, gamma = 0.05, tau0_2 = NULL, tau1_2 = NULL,
+m_star(W, sigma2, rho, xbar = NULL, X = NULL,
+  loc = NULL, gamma = 0.05, tau_ns_2 = NULL, tau_sp_2 = NULL,
   method = c("approx", "exact"), within_ss = NULL,
-  calibration = c("full", "common"), max_search = 1e6)
+  max_search = 1e6)
 }
+
 \arguments{
 \item{W}{Symmetric nonnegative adjacency matrix with zero diagonal.}
-\item{sigma2}{Positive common residual variance.}
-\item{tau2}{Deprecated spatial-scale alias. Prefer named \code{tau0_2} or \code{tau1_2}. The third positional argument retains its old spatial-scale meaning.}
-\item{rho}{Leroux parameter in \eqn{[0,1)}.}
-\item{xbar,X,loc,within_ss}{Covariate template inputs; see \code{\link{variance_curve}}. Balanced replication is required for the \code{X}, \code{loc} interface.}
-\item{gamma}{Positive relative variance tolerance. A value equal to the tolerance is acceptable.}
-\item{tau0_2,tau1_2,calibration}{Variance scales and conversion; see \code{\link{variance_calibration}}.}
-\item{method}{\code{"approx"} returns the leading-order rule; \code{"exact"} seeks the smallest integer at least 2 after which the exact conditional curve stays within tolerance at every integer replication.}
-\item{max_search}{Maximum integer replication evaluated in the exact search. If the rigorous tail bound lies beyond this limit, the exact result is unresolved, not a guessed threshold.}
+\item{sigma2}{Positive residual variance shared by the two models.}
+\item{rho}{Leroux spatial dependence parameter satisfying
+\eqn{0 \leq \rho < 1}.}
+\item{xbar}{Location means for one covariate, or a matrix with one
+covariate per column. Supply this or \code{X} with \code{loc}.}
+\item{X}{Observation-level covariate vector or matrix for a balanced
+design. No intercept is added.}
+\item{loc}{Integer location indices from \code{1} to \code{nrow(W)},
+one per row of \code{X}. Each location must have the same number
+of observations.}
+\item{gamma}{Positive tolerance for the absolute relative variance
+difference, using the nonspatial variance as the denominator.}
+\item{tau_ns_2,tau_sp_2}{Positive nonspatial variance and spatial
+covariance scale. Supply either for variance matching, or both to
+specify them separately. See \code{\link{variance_calibration}}.}
+\item{method}{\code{"approx"} uses the leading-order approximation.
+\code{"exact"} searches for the smallest integer threshold at least 2
+such that the tolerance holds at that and every larger integer
+sample size.}
+\item{within_ss}{Within-location sum of squared covariate deviations
+divided by the template's within-location sample size, with one value
+per covariate. Calculated automatically from \code{X} and \code{loc}.
+When only \code{xbar} is supplied, the default assumes centered
+covariates with population variance one.}
+\item{max_search}{Maximum integer sample size evaluated in the
+exact search.}
 }
-\description{Computes replication guidance for fixed Gaussian covariance parameters and a balanced covariate template using separately specified or calibrated spatial and iid variances.}
+
+\description{
+Computes replication thresholds for agreement in Gaussian full
+conditional coefficient variances as balanced within-location
+replication increases.
+}
+
 \details{
-The curve and target are defined in \code{\link{variance_curve}}. Let
-\eqn{D_i=(U^T\bar{x})_i^2}, \eqn{c_i=1-\rho+\rho\lambda_i}, and
-\eqn{s=W_{\mathrm{within}}/m>0}. The approximate threshold is
-\deqn{m_{\mathrm{approx}}=\max\left\{2,\left\lceil
-\frac{\sigma^2|\sum_iD_i(1/\tau_0^2-c_i/\tau_1^2)|}{\gamma s}
-\right\rceil\right\}.}
-With full-field calibration this becomes the whiteboard expression with
-\eqn{(\sigma^2/\tau_0^2)\sum_iD_i(1-gc_i)} in the signed numerator.
-It is a leading-order approximation, not a finite-sample guarantee.
+Covariance parameters and the remaining regression coefficients are
+held fixed, with random intercepts integrated out and a flat prior
+on the coefficient being compared. Each covariate is evaluated
+separately.
 
-A rigorous bound is \eqn{R(m)\leq A/m}, with
-\deqn{A=\frac{\sigma^2\sum_iD_i|1/\tau_0^2-c_i/\tau_1^2|}{s}.}
-Therefore the exact search need only inspect integers through
-\eqn{\max\{2,\lceil A/\gamma\rceil\}}. It checks every integer up to this bound, including possible later violations after an initial crossing, and returns one more than the last violation (or 2 if none). All larger integers satisfy the tolerance by the bound. This definition concerns integer replication; crossings at fractional replication are not evaluated.
+The location means and within-location variation per unit of
+replication are held fixed as the sample size varies. Covariates
+supplied through \code{X} need not be centered or standardized.
 
-If \code{max_search} is insufficient, \code{m_exact} is \code{NA}, with status \code{search_limit}, the evaluated endpoint, and a certified sufficient \code{sufficient_m}. Increase the search limit to resolve the exact minimum. When \eqn{s=0}, the \eqn{1/m} bound does not apply: \code{m_approx=Inf}, \code{m_exact=NA}, and status \code{no_within_information}. This does not assert that the exact curve never falls below tolerance. Identical covariance action on the covariate, including calibrated \eqn{\rho=0}, instead gives exact threshold 2.
+The approximate threshold uses the leading inverse-sample-size term
+of the relative variance difference. The exact method checks every
+integer sample size from 2 through an upper limit established by a
+finite-sample bound. It returns one more than the last tolerance
+violation, or 2 if there are none.
 
-These are conditional coefficient variance comparisons under flat regression priors: covariance parameters and every other coefficient are fixed, with random effects integrated out. They are not guarantees for marginal posterior inference or coefficient bias. Multiple covariate columns receive separate conditional thresholds.
+If the required search limit exceeds \code{max_search},
+\code{m_exact} is \code{NA} and the status is \code{search_limit}.
+The returned \code{sufficient_m} remains a sufficient replication
+level established by the bound.
+
+When within-location variation is zero, the function reports
+\code{m_approx = Inf}, \code{m_exact = NA}, and status
+\code{no_within_information}. If the two conditional variance
+expressions are identical for the covariate, both thresholds are 2.
 }
-\value{A list with \code{m_star} (the selected method), \code{m_approx}, \code{m_exact}, \code{gamma}, \code{method}, and a \code{thresholds} data frame. The table reports the coefficient, both thresholds, \code{sufficient_m}, \code{status}, \code{searched_through}, \code{last_violation}, \code{leading_constant}, \code{tail_constant}, and \code{within_ss_per_m}. Other fields are \code{g}, \code{tau0_2}, \code{tau1_2}, \code{calibration}, \code{numerator_raw} (legacy unscaled spectral sum), \code{d_sq}, \code{eigenvalues}, \code{within_ss}, and \code{target}. \code{m_exact} is normally unevaluated for \code{method="approx"}.}
-\examples{
-W <- matrix(c(0, 1, 0, 1, 0, 1, 0, 1, 0), 3, 3)
-m_star(W, sigma2 = 0.5, rho = 0.8, tau0_2 = 0.5,
-       xbar = c(-0.5, 0, 0.5), method = "exact")
+
+\value{
+A list containing \code{m_star} for the selected method,
+\code{m_approx}, \code{m_exact}, \code{gamma}, \code{method},
+and a \code{thresholds} data frame with one row per covariate.
+
+The table contains \code{coefficient}, \code{m_approx},
+\code{m_exact}, \code{sufficient_m}, \code{status},
+\code{searched_through}, \code{last_violation},
+\code{leading_constant}, and \code{tail_constant}.
+
+Additional components are \code{g}, \code{tau_ns_2},
+\code{tau_sp_2}, the squared covariate projections \code{d_sq},
+and the graph Laplacian \code{eigenvalues}.
 }
-\seealso{\code{\link{variance_calibration}}, \code{\link{variance_curve}}, \code{\link{variance_comparison}}}

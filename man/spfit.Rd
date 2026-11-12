@@ -62,9 +62,9 @@ Draws are not discarded internally. See \code{\link{posterior_draws}}.}
 \item{adapt_rho}{Adapt the logit-scale rho proposal during burn-in.}
 
 \item{a_sigma2_prior, b_sigma2_prior}{Gaussian residual inverse-gamma shape
-and rate parameters. NULL uses 0.01.}
+and scale parameters. NULL uses 0.01.}
 
-\item{a_tau2_prior, b_tau2_prior}{Random-effect inverse-gamma shape and rate.
+\item{a_tau2_prior, b_tau2_prior}{Random-effect inverse-gamma shape and scale
 NULL uses 0.01.}
 
 \item{a_rho_prior, b_rho_prior}{Beta prior parameters for rho. NULL uses one.}
@@ -92,8 +92,8 @@ SD requests a flat prior. Gaussian fits use the existing flat prior.}
 random effects. Gaussian fits require \code{center=TRUE} and an intercept;
 binary/count fits also allow \code{center=FALSE}.}
 
-\item{pg_method}{\code{"devroye"}, the only supported value, uses the
-\pkg{pgdraw} package for exact integer-shape Polya--Gamma sampling.}
+\item{pg_method}{The only supported value is \code{"devroye"}, using
+\pkg{pgdraw} for integer-shape Polya--Gamma draws.}
 
 \item{verbose}{Print Gaussian sampling progress.}
 }
@@ -112,12 +112,12 @@ Bernoulli, binomial and negative-binomial models use Polya--Gamma augmentation.
 Multiple covariates and unequal observation counts are supported.
 }
 \details{
-Gaussian fits use the normalized random-effect prior on the sum-zero
-  subspace. The variance update uses rank \eqn{n-1}, and the correlation
-  determinant excludes the global constant eigencomponent. With a flat
-  intercept prior, this preserves the slope and covariance-parameter
-  posterior of the unrestricted proper Leroux model. The stored intercept
-  is \eqn{\beta_0+\bar\theta}, and the stored random effects are
+Gaussian fits use the normalized random-effect prior on the
+  sum-zero subspace. The variance update uses rank \eqn{n-1}, and the
+  correlation determinant excludes the global constant eigencomponent.
+  With a flat intercept prior, this preserves the slope and covariance
+  parameter posterior of the unrestricted proper Leroux model. The stored
+  intercept is \eqn{\beta_0+\bar\theta}, and stored random effects are
   \eqn{\theta_i-\bar\theta}; the original intercept marginal is different.
   Noncentered Gaussian initial random effects are centered while the
   intercept is shifted to preserve the initial linear predictor.

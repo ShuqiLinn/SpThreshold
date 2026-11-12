@@ -1,70 +1,99 @@
 \name{SpThreshold}
 \alias{SpThreshold}
-\title{Bayesian Multilevel Model for Areal Data with or without a Spatial Random Effect}
+\title{Fit Gaussian Multilevel Models}
+
 \description{
-Fits a Bayesian multilevel model for repeatedly measured areal spatial data under either a Leroux conditional autoregressive (CAR) prior on the area-level random effects (spatial model) or an independent and identically distributed prior (nonspatial model). Posterior sampling proceeds via Markov chain Monte Carlo.
+Fits Gaussian multilevel models with Leroux spatial or independent
+Gaussian random intercepts using MCMC. Multiple covariates and
+unequal within-location sample sizes are supported.
 }
+
 \usage{
-SpThreshold(mcmc_samples, y, X, loc, model_indicator,
-            W = NULL, proposal_sd_init = NULL,
-            a_sigma2_prior = NULL, b_sigma2_prior = NULL,
-            a_tau2_prior = NULL, b_tau2_prior = NULL,
-            a_rho_prior = NULL, b_rho_prior = NULL,
-            beta_init = NULL, theta_init = NULL,
-            sigma2_init = NULL, tau2_init = NULL, rho_init = NULL,
-            burnin = 0, adapt_rho = TRUE, verbose = TRUE)
+SpThreshold(
+  mcmc_samples, y, X, loc, model_indicator,
+  W = NULL, proposal_sd_init = NULL,
+  a_sigma2_prior = NULL, b_sigma2_prior = NULL,
+  a_tau2_prior = NULL, b_tau2_prior = NULL,
+  a_rho_prior = NULL, b_rho_prior = NULL,
+  beta_init = NULL, theta_init = NULL,
+  sigma2_init = NULL, tau2_init = NULL, rho_init = NULL,
+  burnin = 0L, adapt_rho = TRUE, verbose = TRUE
+)
 }
+
 \arguments{
-\item{mcmc_samples}{Integer number of MCMC iterations (including burn-in).}
+\item{mcmc_samples}{Number of MCMC iterations, counting initialization
+as the first iteration.}
 
-\item{y}{Length-\eqn{N} numeric vector of outcomes, where \eqn{N = nm}.}
+\item{y}{Numeric response vector.}
 
-\item{X}{\eqn{N} by \eqn{p} full-rank design matrix for the fixed effects, containing an intercept column. At least two locations are required.}
+\item{X}{Full-rank numeric design matrix with one row per observation
+and a column of ones for the intercept.}
 
-\item{loc}{Length-\eqn{N} integer vector identifying the spatial area for each observation, with values in \eqn{0, 1, \ldots, n-1}.}
+\item{loc}{Integer location indices starting at zero, one per
+observation. At least two locations are required.}
 
-\item{model_indicator}{Integer, either \code{0} (nonspatial) or \code{1} (spatial Leroux CAR).}
+\item{model_indicator}{1 for spatial or 0 for nonspatial
+random intercepts.}
 
-\item{W}{Required when \code{model_indicator = 1}. An \eqn{n} by \eqn{n} symmetric binary adjacency matrix with zero diagonal.}
+\item{W}{Symmetric nonnegative adjacency matrix with zero diagonal.
+Required for the spatial model.}
 
-\item{proposal_sd_init}{Initial standard deviation of the logit-scale random-walk proposal for \eqn{\rho}. Default: \code{0.30}.}
+\item{proposal_sd_init}{Initial standard deviation of the
+logit-scale proposal for \eqn{\rho}. \code{NULL} uses 0.30.}
 
-\item{a_sigma2_prior, b_sigma2_prior}{Shape and rate of the inverse-gamma prior on \eqn{\sigma^2}. Defaults: \code{0.01, 0.01}.}
+\item{a_sigma2_prior, b_sigma2_prior}{Inverse-gamma shape and scale
+parameters for the residual variance.
+Each defaults to 0.01 when \code{NULL}.}
 
-\item{a_tau2_prior, b_tau2_prior}{Shape and rate of the inverse-gamma prior on \eqn{\tau^2}. Defaults: \code{0.01, 0.01}.}
+\item{a_tau2_prior, b_tau2_prior}{Inverse-gamma shape and scale
+parameters for the random-intercept variance.
+Each defaults to 0.01 when \code{NULL}.}
 
-\item{a_rho_prior, b_rho_prior}{Shape parameters of the beta prior on \eqn{\rho}. Defaults: \code{1, 1} (Uniform\eqn{(0, 1)}).}
+\item{a_rho_prior, b_rho_prior}{Beta prior shape parameters for
+\eqn{\rho}. Each defaults to 1 when \code{NULL}.}
 
-\item{beta_init, theta_init, sigma2_init, tau2_init, rho_init}{Initial values for MCMC. Defaults: \code{0} vector for \code{beta_init} and \code{theta_init}, \code{1.00} for \code{sigma2_init} and \code{tau2_init}, \code{0.50} for \code{rho_init}.}
+\item{beta_init, theta_init}{Initial coefficient and random-intercept
+vectors. \code{NULL} uses zero vectors.}
 
-\item{burnin}{Integer number of initial iterations during which the \eqn{\rho} proposal standard deviation is adapted (if \code{adapt_rho = TRUE}). Should be less than \code{mcmc_samples}.}
+\item{sigma2_init, tau2_init}{Initial variance parameters.
+\code{NULL} uses 1 for each.}
 
-\item{adapt_rho}{Logical. If \code{TRUE} (default), the \eqn{\rho} proposal standard deviation is adapted during burn-in using a Robbins-Monro scheme targeting an acceptance rate of \code{0.234}.}
-\item{verbose}{Logical. Print sampling progress.}
+\item{rho_init}{Initial spatial correlation in \eqn{(0,1)}.
+\code{NULL} uses 0.5.}
+
+\item{burnin}{Number of initial updates during which the
+\eqn{\rho} proposal may adapt. Draws are not discarded internally.}
+
+\item{adapt_rho}{Whether to adapt the \eqn{\rho} proposal during
+burn-in, targeting an acceptance rate of 0.234.}
+
+\item{verbose}{Whether to print sampling progress.}
 }
-\value{
-A list with components
-\item{\code{beta}}{\eqn{p} by \code{mcmc_samples} matrix of \eqn{\boldsymbol{\beta}} posterior samples.}
-\item{\code{theta}}{\eqn{n} by \code{mcmc_samples} matrix of \eqn{\boldsymbol{\theta}} posterior samples.}
-\item{\code{sigma2}}{Length-\code{mcmc_samples} vector of \eqn{\sigma^2} posterior samples.}
-\item{\code{tau2}}{Length-\code{mcmc_samples} vector of \eqn{\tau^2} posterior samples.}
-\item{\code{rho}}{(Spatial model only.) Length-\code{mcmc_samples} vector of \eqn{\rho} posterior samples.}
-\item{\code{accept_rho}}{(Spatial model only.) Total number of accepted \eqn{\rho} proposals.}
-\item{\code{final_proposal_sd}}{(Spatial model only.) Final proposal standard deviation after adaptation.}
-}
+
 \details{
-The sampler uses the normalized sum-zero random-effect prior. It draws
-the Gaussian conditional restricted to \eqn{\boldsymbol{1}^\top\boldsymbol{\theta}=0},
-uses rank \eqn{n-1} in the variance update, and excludes the global constant
-eigencomponent from the correlation determinant. With the flat intercept
-prior, slope and covariance-parameter posteriors equal those of the original
-unrestricted proper Leroux model. The stored intercept is
-\eqn{\beta_0+\bar\theta}, and the stored random effects are
-\eqn{\theta_i-\bar\theta}. A noncentered initial random-effect vector is
-centered while its mean is added to the intercept, preserving the linear
-predictor. Results include \code{sampler_version="gaussian_sum_zero_v2"},
-\code{random_effect_rank}, and \code{intercept_parameterization}.
+Regression coefficients have flat priors. Inverse-gamma priors
+use the density proportional to \eqn{t^{-a-1}\exp(-b/t)}.
+
+Random intercepts are represented with zero sum, with their mean
+absorbed into the intercept. Under the flat intercept prior,
+this preserves the slope and covariance parameter posteriors
+of the unrestricted model.
+
+For the standard interface with location indices starting at one,
+use \code{\link{spfit}}.
 }
-\seealso{
-\code{\link{m_star}} for the closed-form replication threshold; \code{\link{create_random_W}} and \code{\link{create_W_from_shapefile}} for adjacency matrix construction.
+
+\value{
+A list containing coefficient and random-intercept matrices
+\code{beta} and \code{theta}, with one stored state per column,
+and variance parameter vectors \code{sigma2} and \code{tau2}.
+
+Spatial fits also return \code{rho}, the accepted proposal count
+\code{accept_rho}, and the final proposal standard deviation
+\code{final_proposal_sd}.
+
+The first stored state is the initialization. To summarize draws,
+use \code{\link{posterior_summary}} with \code{burnin}
+specified explicitly.
 }
