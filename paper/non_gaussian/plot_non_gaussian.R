@@ -49,9 +49,9 @@ plot_comparison <- function(s, metric, y_label, reference, reference_colour) {
 plots <- list()
 
 for (family in c("bernoulli", "nb")) {
-    headers <- sprintf("tau[0]^2 == %.2f", tau_values)
+    headers <- sprintf("tau[ns]^2 == %.2f", tau_values)
     if (family == "nb")
-        headers <- sprintf("tau[0]^2 == %.2f ~ ',' ~ r == %d", tau_values, c(1, 10, 100))
+        headers <- sprintf("tau[ns]^2 == %.2f ~ ',' ~ r == %d", tau_values, c(1, 10, 100))
 
     d <- readRDS(paste0("n100_", family, ".rds")) |>
         filter(m %in% m_values, rho_true %in% rho_values,

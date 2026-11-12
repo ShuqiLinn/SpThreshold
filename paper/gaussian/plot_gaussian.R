@@ -41,7 +41,7 @@ plot_comparison <- function(s, metric, y_label, reference, reference_colour) {
     scale_shape_manual(values = c(C1 = 16, C2 = 17, C3 = 15)) +
     scale_linetype_manual(
       values = c(MCMC = "solid", Exact = "dashed"),
-      labels = c(MCMC = "Marginal MCMC", Exact = "Exact conditional")
+      labels = c(MCMC = "Posterior", Exact = "Full conditional")
     ) +
     scale_x_continuous(
       breaks = seq_along(m_values), labels = m_values
@@ -93,7 +93,7 @@ for (n_locs in c(25, 100, 400)) {
       k_label = factor(
         tau0_2_true, levels = tau_values,
         labels = sprintf(
-          "tau[0]^2/sigma^2 == %.2f/%.2f",
+          "tau[ns]^2/sigma^2 == %.2f/%.2f",
           tau_values, 1 - tau_values
         )
       )

@@ -40,7 +40,7 @@ s <- bind_rows(
     rho_label = factor(rho_true, levels = rho_values,
                        labels = paste0("rho == ", rho_values)),
     k_label = factor(tau0_2_true, levels = tau_values,
-                     labels = sprintf("tau[0]^2/sigma^2 == %.2f/%.2f",
+                     labels = sprintf("tau[ns]^2/sigma^2 == %.2f/%.2f",
                                       tau_values, 1 - tau_values)),
     m_pos = match(m, m_values) + ifelse(model == "Spatial", -0.07, 0.07)
   )

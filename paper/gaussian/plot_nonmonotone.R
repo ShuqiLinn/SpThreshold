@@ -118,7 +118,7 @@ p <- ggplot(curves, aes(m, difference)) +
   scale_x_continuous(
     breaks = c(2, 200, 500, 1000, 1500),
     labels = c("2", "200", "500", "1,000", "1,500"),
-    expand = expansion(mult = c(0.02, 0.02))
+    expand = expansion(mult = c(0.03, 0.07))
   ) +
   scale_y_continuous(
     labels = function(x) format(x, trim = TRUE, scientific = FALSE),
