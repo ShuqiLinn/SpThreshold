@@ -75,10 +75,7 @@ burn-in, targeting an acceptance rate of 0.234.}
 Regression coefficients have flat priors. Inverse-gamma priors
 use the density proportional to \eqn{t^{-a-1}\exp(-b/t)}.
 
-Random intercepts are represented with zero sum, with their mean
-absorbed into the intercept. Under the flat intercept prior,
-this preserves the slope and covariance parameter posteriors
-of the unrestricted model.
+Random intercepts sum to zero, with their mean absorbed into the intercept.
 
 For the standard interface with location indices starting at one,
 use \code{\link{spfit}}.

@@ -63,10 +63,9 @@ one value per coefficient. Defaults to \eqn{N(0,10^2)}.
 A standard deviation of \code{Inf} specifies a flat prior.
 Flat priors require full column rank in \code{X} and a proper posterior.}
 
-\item{center}{If \code{TRUE}, constrain the random intercepts to sum
-to zero; an intercept column is required in \code{X}.
-If \code{FALSE}, use the unconstrained Gaussian random-intercept prior.
-This specifies the fitted model, rather than centering its output.}
+\item{center}{Whether to constrain the random intercepts to sum to zero.
+Defaults to \code{TRUE}, which requires an intercept column in \code{X}.
+With \code{FALSE}, the Gaussian random-intercept prior is unconstrained.}
 
 \item{pg_method}{Polya-Gamma sampling method. The only supported
 value is \code{"devroye"}, using \pkg{pgdraw}.}

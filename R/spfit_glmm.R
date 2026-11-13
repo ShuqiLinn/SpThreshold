@@ -1,7 +1,6 @@
 #' Fit Bernoulli, binomial, or negative-binomial spatial mixed models
 #'
-#' Uses Polya-Gamma augmentation with compiled Gaussian updates. See
-#' \code{\link{spfit_glmm}} for the explicit centering constraint and priors.
+#' Uses Polya-Gamma augmentation with compiled Gaussian updates.
 #' @export
 spfit_glmm <- function(y, X, loc, W, model_indicator, mcmc_samples,
                        family = c("bernoulli", "binomial", "negative_binomial"),
